@@ -1,9 +1,10 @@
 import os
 from Bio import SeqIO
+from Bio import Phylo
 
 
 def load_files():
-	DNA_FILE = 'data/Compara.110.ncrna_default.nt.fasta'
+	DNA_FILE = 'tree_test.tree'
 	SPECIES_FILE = 'data/Compara.110.ncrna_default.nh.emf'
 
 	# TODO: Create a handler for the SPECIES_FILE and create a dict species -> genome
@@ -16,7 +17,11 @@ def load_files():
 				dat = line.split(" ")
 				code_to_species[dat[2]] = dat[1]
 
-	sequences = list(SeqIO.parse(DNA_FILE, "fasta"))
+	test = Phylo.read(DNA_FILE, "newick")
+	# sequences = list()
+	Phylo.draw_ascii(test)
+	
+	return (None, None)
 
 	return (code_to_species, sequences)
 

@@ -2,19 +2,19 @@ import requests
 import json
 
 
-# TODO: NEED AWS SESSION/ACCESS KEY
+# TODO: FIX THIS REST SERVICE
 def fetch_tree():
 
-	API_URL = "http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/rose/rose_fct_AA/request"
-	API_STATUS_URL = "http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/rose/rose_fct_AA/statuscode"
-	API_RESPONSE_URL = "http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/rose/rose_fct_AA/response"
+	API_URL = "https://bibiserv.cebitec.uni-bielefeld.de/applications/rose/pages/rose_fct_AA_result.jsf"
+	API_STATUS_URL = "http://bibiserv2.cebitec.uni-bielefeld.de/rose/rose_fct_AA/statuscode"
+	API_RESPONSE_URL = "http://bibiserv2.cebitec.uni-bielefeld.de/rose/rose_fct_AA/response"
 
 	headers = {
 	    "Content-Type": "application/json"
 	}
 
 	f = open("data/api/rose_fct_AA.example.json", "r")
-	data = json.load(f)	
+	data = json.load(f)
 	response = requests.post(API_URL, json=data, headers=headers)
 
 	ID = response.text
