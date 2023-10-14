@@ -10,14 +10,22 @@ def toCSV(path, filename):
 		for line in f:
 			line_data = list(filter(None, line.split("\t")))
 			data.append([line_data[-1].replace("\r", "").replace("\n", "")])
-			data[-1] += [0] * (100 - (len(line_data[:-1])-1))
+			data[-1] += [0] * (100 - (len(line_data)-1))
 			data[-1] += [float(item.replace(" ", "")) for item in line_data[:-1]]
 
 		arr = [list(x) for x in list(np.array(data))]
+		for a in arr:
+			if " " in a[0]:
+				a[0] = a[0][:3] + a[0].split(" ")[1]
+			if "_" in a[0]:
+				a[0] = a[0][:3] + a[0].split("_")[1]
+
 		arr.insert(0, [""] + [a[0] for a in arr])
 
-		for i in range(1, len(arr)-1):
-			for j in range(1, len(arr[i])-1):
+		assert len([a[0] for a in arr]) == len(set([a[0] for a in arr]))
+
+		for i in range(1, len(arr)):
+			for j in range(1, len(arr[i])):
 				arr[j][i] = arr[i][j]
 
 		with open(f'{path}/{filename}.csv', 'w', newline='') as csvfile:
@@ -27,4 +35,4 @@ def toCSV(path, filename):
 
 
 if __name__ == '__main__':
-	toCSV("../data/testing", "output")
+	toCSV("../data/testing", "output_predefined_tree")
