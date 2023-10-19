@@ -4,20 +4,27 @@ from Bio import AlignIO
 import csv
 
 
-def get_tree_and_alignment():
+def get_alignment(loc):
+	with open(f"{loc}.sim.p") as f:
+		return AlignIO.read(f, 'phylip')
 
-	alignment = None
-	tree = None
 
-	with open("data/fast_tree_dataset/COG527.sim.p") as f:
-		alignment = AlignIO.read(f, 'phylip')
+def get_alignment_sequence_dict(alignment):
+	dictionary = {}
+	for seq in alignment:
+		dictionary[seq.name] = seq.seq
+	return dictionary
 
-	with open("data/fast_tree_dataset/COG527.sim.trim.tree") as f:
+
+def get_tree(loc):
+	with open(f"{loc}.sim.trim.tree") as f:
 		data = f.read()
-		tree = dendropy.Tree.get(data=data, schema="newick")
+		return dendropy.Tree.get(data=data, schema="newick")
 
-	return (tree, alignment)
+
+def get_tree_and_alignment(loc):
+	return (get_tree(loc), get_alignment(loc))
 
 
 if __name__ == "__main__":
-	get_tree_and_alignment()
+	get_tree_and_alignment("data/fast_tree_dataset/COG527")
