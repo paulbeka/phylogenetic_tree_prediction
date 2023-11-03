@@ -4,6 +4,7 @@ import dendropy
 from Bio.Phylo.TreeConstruction import DistanceCalculator, DistanceTreeConstructor, Scorer
 from dendropy.calculate import treecompare#
 from Bio.Phylo import write, read
+import copy
 
 
 actions = []
@@ -11,40 +12,77 @@ actions = []
 
 def main():
 	
-	tree1, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
+	_, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
 	
 	calculator = DistanceCalculator('identity')
 	distMatrix = calculator.get_distance(alignment)
 	treeConstructor = DistanceTreeConstructor()
 
-	tree1 = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
-	tree2 = treeConstructor.upgma(distMatrix)
+	original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
+	tree = treeConstructor.upgma(distMatrix)
 
 	scorer = Scorer()
-	# print(scorer.get_score(tree1, tree2))
 
-	traverse_tree(tree2.root)
-	find_action_space(tree2)
+	actionSpace = find_action_space(tree)
+
+	# subtree_to_prune = next(iter(tree.find_clades(name="N177")))
+	# regraft_location = next(iter(tree.find_clades(name="N155")))
+	# new_tree = perform_spr(tree, subtree_to_prune, regraft_location)
+
+	print(getTreeScore(tree, original_tree))
+
 
 
 def find_action_space(tree):
 	nodes = []
-	for action in actions:
-		if str(action)[0] == "N":
-			nodes.append(action)
 
-	print(nodes)
-	common_ancestor = tree.common_ancestor(nodes[0], nodes[1])
-	child1, child2 = common_ancestor.clades
-	common_ancestor.clades = [child2, child1]
+	for clade in tree.find_clades():
+		nodes.append(clade)
+
+	actionSpace = []
+	for node in nodes:
+		for item in nodes:
+			if node == item:
+				break
+
+			actionSpace.append((node, item))
+
+	return actionSpace
 
 
-def traverse_tree(clade, depth=0):
-	global actions
-	for child in clade.clades:
-		actions.append(child)
-		traverse_tree(child, depth + 1)
 
+def perform_spr(tree, subtree, regraft_location):
+	parent = get_parent(tree, subtree)
+
+	if parent is None:
+		raise ValueError("Can't prune the root.")
+    
+	parent.clades.remove(subtree)
+    
+	if regraft_location:
+		regraft_location.clades.append(subtree)
+	else:
+		tree.root.clades.append(subtree)
+    
+	return tree
+
+
+def getTreeScore(tree, originalTree):
+	calculator = DistanceCalculator('identity')
+	dm1 = calculator.get_distance(tree)
+	dm2 = calculator.get_distance(originalTree)
+
+	matrix1 = dm1.matrix_form()
+	matrix2 = dm2.matrix_form()
+	print(matrix1, matrix2)
+	print(dir(tree))
+	return tree.robinson_foulds(originalTree)[0]
+
+
+# UTILITY - GET PARENT OF A CLADE
+def get_parent(tree, child_clade):
+    node_path = tree.get_path(child_clade)
+    return node_path[-2]
 
 
 if __name__ == "__main__":
