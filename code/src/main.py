@@ -23,14 +23,9 @@ def main():
 
 	scorer = Scorer()
 
-	actionSpace = find_action_space(tree)
-
-	# subtree_to_prune = next(iter(tree.find_clades(name="N177")))
-	# regraft_location = next(iter(tree.find_clades(name="N155")))
-	# new_tree = perform_spr(tree, subtree_to_prune, regraft_location)
-
-	print(getTreeScore(tree, original_tree))
-
+	for i in range(1):
+		actionSpace = find_action_space(tree)
+		getTreeScore(tree, original_tree)
 
 
 def find_action_space(tree):
@@ -68,15 +63,30 @@ def perform_spr(tree, subtree, regraft_location):
 
 
 def getTreeScore(tree, originalTree):
-	calculator = DistanceCalculator('identity')
-	dm1 = calculator.get_distance(tree)
-	dm2 = calculator.get_distance(originalTree)
+	treeProps = getTreeProperties(tree)
+	originalTreeProps = getTreeProperties(originalTree)
 
-	matrix1 = dm1.matrix_form()
-	matrix2 = dm2.matrix_form()
-	print(matrix1, matrix2)
-	print(dir(tree))
-	return tree.robinson_foulds(originalTree)[0]
+	length_diff = abs(treeProps["total_branch_length"] - originalTreeProps["total_branch_length"])
+	n_nodes_diff = abs(treeProps["n_nodes"] - originalTreeProps["n_nodes"])
+	avg_terminal_distance_diff = abs(treeProps["avg_terminal_distance"] - originalTreeProps["avg_terminal_distance"])
+
+	return (0.4 * length_diff) + (0.3 * n_nodes_diff) + (0.3 * avg_terminal_distance_diff)
+
+
+def getTreeProperties(tree):
+	properties = {}
+	properties['total_branch_length'] = tree.total_branch_length()
+	
+	n_terminals = 0
+	total_distance = 0
+	for terminal in tree.get_terminals():
+		total_distance += tree.distance(terminal)
+		n_terminals += 1
+	
+	properties['n_nodes'] = len(tree.get_nonterminals()) + n_terminals
+	properties['avg_terminal_distance'] = total_distance / n_terminals
+
+	return properties
 
 
 # UTILITY - GET PARENT OF A CLADE
