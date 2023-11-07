@@ -1,7 +1,7 @@
 import torch
 
 
-def train():
+def train(dataset):
 	pass
 
 
