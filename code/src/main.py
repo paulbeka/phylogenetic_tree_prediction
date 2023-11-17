@@ -5,10 +5,18 @@ import dendropy
 from Bio.Phylo.TreeConstruction import DistanceCalculator, DistanceTreeConstructor, Scorer
 from dendropy.calculate import treecompare#
 from Bio.Phylo import write, read
+from Bio import Phylo
 import copy
 import random
 from networks import neural_network
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+from torch_geometric.nn import GCNConv
+
+import networkx as nx
+import torch.nn.functional as F
+from torch_geometric.data import Data
+from torch_geometric.utils import from_networkx
 
 
 actions = []
@@ -25,63 +33,90 @@ def main():
 	original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
 	tree = treeConstructor.upgma(distMatrix)
 
-	# LOAD THE DATA
-	n_train, n_test = 1000, 200
+	graph = Phylo.to_networkx(tree)
 
-	print("Loading training dataset...")
-	train_dataset = generateDataset(original_tree, n_train)
-	train_loader = torch.utils.data.DataLoader(
-		dataset=train_dataset, 
-		batch_size=1, 
-		shuffle=True)
+	data = from_networkx(graph)
 
-	displayMatplotlib(train_dataset)
+	class GNN(torch.nn.Module):
+	    def __init__(self, input_dim, hidden_dim, output_dim):
+	        super(GNN, self).__init__()
+	        self.conv1 = GCNConv(input_dim, hidden_dim)
+	        self.conv2 = GCNConv(hidden_dim, output_dim)
 
-	print("Loading test dataset...")
-	test_dataset = generateDataset(original_tree, n_test)
-	test_loader = torch.utils.data.DataLoader(
-		dataset=test_dataset,
-		batch_size=1, 
-		shuffle=True
-	)
+	    def forward(self, data):
+	    	# Here, extract a meaninful feature to do something with it
+	        x, edge_index = data.weight, data.edge_index
+	        x = F.relu(self.conv1(x, edge_index))
+	        x = F.relu(self.conv2(x, edge_index))
+	        return F.log_softmax(x, dim=1)
+
+	input_dim = 1
+	hidden_dim = 64
+	output_dim = 2
+
+	model = GNN(input_dim, hidden_dim, output_dim)
+
+	output = model(data)
+	print(output)
+
+
+	# # LOAD THE DATA
+	# n_train, n_test = 1000, 200
+
+	# print("Loading training dataset...")
+	# train_dataset = generateDataset(original_tree, n_train)
+	# train_loader = torch.utils.data.DataLoader(
+	# 	dataset=train_dataset, 
+	# 	batch_size=1, 
+	# 	shuffle=True)
+
+	# displayMatplotlib(train_dataset)
+
+	# print("Loading test dataset...")
+	# test_dataset = generateDataset(original_tree, n_test)
+	# test_loader = torch.utils.data.DataLoader(
+	# 	dataset=test_dataset,
+	# 	batch_size=1, 
+	# 	shuffle=True
+	# )
 	
-	# TRAIN THE NEURAL NETWORK
+	# # TRAIN THE NEURAL NETWORK
 
-	num_epochs = 10
-	batch_size = 1
-	learning_rate = 0.0001
+	# num_epochs = 10
+	# batch_size = 1
+	# learning_rate = 0.0001
 
-	model =  neural_network.ScoreFinder(batch_size)
-	# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-	# torch.cuda.set_device(device)
-	# model.to(device)
-	# model.cuda(device)
+	# model =  neural_network.ScoreFinder(batch_size)
 
-	criterion = nn.MSELoss()
-	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+	# criterion = nn.MSELoss()
+	# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-	total_steps = len(train_loader)
-	for epoch in range(num_epochs):
-		print(f"Epoch: {epoch+1}/{num_epochs}")
-		for i, (configs, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
-			outputs = model(configs)
-			loss = criterion(outputs, labels)
+	# total_steps = len(train_loader)
+	# for epoch in range(num_epochs):
+	# 	print(f"Epoch: {epoch+1}/{num_epochs}")
+	# 	for i, (configs, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
+	# 		outputs = model(configs)
+	# 		loss = criterion(outputs, labels)
 
-			optimizer.zero_grad()
-			loss.backward()
-			optimizer.step()
+	# 		optimizer.zero_grad()
+	# 		loss.backward()
+	# 		optimizer.step()
 
 
-	with torch.no_grad():
-		correct, samples = 0, 0
-		test_loss = 0
-		for configs, labels in test_loader:
-			ouputs = model(configs)
+	# with torch.no_grad():
+	# 	correct, samples = 0, 0
+	# 	test_loss = 0
+	# 	out = []
+	# 	for configs, labels in test_loader:
+	# 		ouputs = model(configs)
+	# 		out.append(outputs)
 
-			# _, predictions = torch.max(outputs, 1)
-			test_loss += criterion(outputs, labels)
+	# 		# _, predictions = torch.max(outputs, 1)
+	# 		test_loss += criterion(outputs, labels)
 
-		print(f"Total loss: {test_loss/len(test_loader)}")
+	# 	print(f"Total loss: {test_loss/len(test_loader)}")
+
+	# 	print(out)
 
 
 def find_action_space(tree):
@@ -118,14 +153,15 @@ def perform_spr(tree, subtree, regraft_location):
 
 
 def getTreeScore(tree, originalTree):
+	# likelihood score ? BioPython library might have it
 	treeProps = getTreeProperties(tree)
 	originalTreeProps = getTreeProperties(originalTree)
 
 	length_diff = abs(treeProps["total_branch_length"] - originalTreeProps["total_branch_length"])
 	n_nodes_diff = abs(treeProps["n_nodes"] - originalTreeProps["n_nodes"])
 	avg_terminal_distance_diff = abs(treeProps["avg_terminal_distance"] - originalTreeProps["avg_terminal_distance"])
-
-	return (0.4 * length_diff) + (0.3 * n_nodes_diff) + (0.3 * avg_terminal_distance_diff)
+	
+	return avg_terminal_distance_diff * 10
 
 
 def getTreeProperties(tree):
@@ -147,11 +183,11 @@ def getTreeProperties(tree):
 # TODO: check that the generation is not just re-generating the same tree again and again. !!!
 def generateDataset(originalTree, n_items):
 	dataset = []
-	currentTree = copy.copy(originalTree)
+	currentTree = copy.deepcopy(originalTree)
 	for i in tqdm(range(n_items)):
 		possible_actions = find_action_space(currentTree)
 		action = random.choice(possible_actions)
-		currentTree = perform_spr(currentTree, action[0], action[1])
+		currentTree = copy.deepcopy(perform_spr(currentTree, action[0], action[1]))
 		inputMatrix = list(getTreeProperties(currentTree).values())
 		dataset.append((torch.FloatTensor(inputMatrix), torch.FloatTensor([getTreeScore(currentTree, originalTree)])))
 
@@ -159,7 +195,11 @@ def generateDataset(originalTree, n_items):
 
 
 def displayMatplotlib(dataset):
-	pass
+	dat = [x[1] for x in dataset]
+	x_axis = list(range(len(dataset)))
+	
+	plt.plot(x_axis, dat)
+	plt.show()
 
 
 # UTILITY - GET PARENT OF A CLADE
