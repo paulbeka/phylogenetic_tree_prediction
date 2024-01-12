@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import dendropy
 from Bio.Phylo.TreeConstruction import DistanceCalculator, DistanceTreeConstructor, Scorer
-from dendropy.calculate import treecompare#
+from dendropy.calculate import treecompare
 from Bio.Phylo import write, read
 from Bio import Phylo
 import copy
@@ -12,7 +12,7 @@ from networks import neural_network
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torch_geometric.nn import GCNConv
-
+from dendropy.interop import raxml
 import networkx as nx
 import torch.nn.functional as F
 from torch_geometric.data import Data
@@ -33,90 +33,64 @@ def main():
 	original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
 	tree = treeConstructor.upgma(distMatrix)
 
-	graph = Phylo.to_networkx(tree)
 
-	data = from_networkx(graph)
+	# LOAD THE DATA
+	n_train, n_test = 1000, 200
 
-	class GNN(torch.nn.Module):
-	    def __init__(self, input_dim, hidden_dim, output_dim):
-	        super(GNN, self).__init__()
-	        self.conv1 = GCNConv(input_dim, hidden_dim)
-	        self.conv2 = GCNConv(hidden_dim, output_dim)
+	print("Loading training dataset...")
+	train_dataset = generateDataset(original_tree, n_train)
+	train_loader = torch.utils.data.DataLoader(
+		dataset=train_dataset, 
+		batch_size=1, 
+		shuffle=True)
 
-	    def forward(self, data):
-	    	# Here, extract a meaninful feature to do something with it
-	        x, edge_index = data.weight, data.edge_index
-	        x = F.relu(self.conv1(x, edge_index))
-	        x = F.relu(self.conv2(x, edge_index))
-	        return F.log_softmax(x, dim=1)
+	displayMatplotlib(train_dataset)
 
-	input_dim = 1
-	hidden_dim = 64
-	output_dim = 2
-
-	model = GNN(input_dim, hidden_dim, output_dim)
-
-	output = model(data)
-	print(output)
-
-
-	# # LOAD THE DATA
-	# n_train, n_test = 1000, 200
-
-	# print("Loading training dataset...")
-	# train_dataset = generateDataset(original_tree, n_train)
-	# train_loader = torch.utils.data.DataLoader(
-	# 	dataset=train_dataset, 
-	# 	batch_size=1, 
-	# 	shuffle=True)
-
-	# displayMatplotlib(train_dataset)
-
-	# print("Loading test dataset...")
-	# test_dataset = generateDataset(original_tree, n_test)
-	# test_loader = torch.utils.data.DataLoader(
-	# 	dataset=test_dataset,
-	# 	batch_size=1, 
-	# 	shuffle=True
-	# )
+	print("Loading test dataset...")
+	test_dataset = generateDataset(original_tree, n_test)
+	test_loader = torch.utils.data.DataLoader(
+		dataset=test_dataset,
+		batch_size=1, 
+		shuffle=True
+	)
 	
-	# # TRAIN THE NEURAL NETWORK
+	# TRAIN THE NEURAL NETWORK
 
-	# num_epochs = 10
-	# batch_size = 1
-	# learning_rate = 0.0001
+	num_epochs = 10
+	batch_size = 1
+	learning_rate = 0.0001
 
-	# model =  neural_network.ScoreFinder(batch_size)
+	model =  neural_network.ScoreFinder(batch_size)
 
-	# criterion = nn.MSELoss()
-	# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+	criterion = nn.MSELoss()
+	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-	# total_steps = len(train_loader)
-	# for epoch in range(num_epochs):
-	# 	print(f"Epoch: {epoch+1}/{num_epochs}")
-	# 	for i, (configs, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
-	# 		outputs = model(configs)
-	# 		loss = criterion(outputs, labels)
+	total_steps = len(train_loader)
+	for epoch in range(num_epochs):
+		print(f"Epoch: {epoch+1}/{num_epochs}")
+		for i, (configs, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
+			outputs = model(configs)
+			loss = criterion(outputs, labels)
 
-	# 		optimizer.zero_grad()
-	# 		loss.backward()
-	# 		optimizer.step()
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
 
 
-	# with torch.no_grad():
-	# 	correct, samples = 0, 0
-	# 	test_loss = 0
-	# 	out = []
-	# 	for configs, labels in test_loader:
-	# 		ouputs = model(configs)
-	# 		out.append(outputs)
+	with torch.no_grad():
+		correct, samples = 0, 0
+		test_loss = 0
+		out = []
+		for configs, labels in test_loader:
+			ouputs = model(configs)
+			out.append(outputs)
 
-	# 		# _, predictions = torch.max(outputs, 1)
-	# 		test_loss += criterion(outputs, labels)
+			# _, predictions = torch.max(outputs, 1)
+			test_loss += criterion(outputs, labels)
 
-	# 	print(f"Total loss: {test_loss/len(test_loader)}")
+		print(f"Total loss: {test_loss/len(test_loader)}")
 
-	# 	print(out)
+		print(out)
 
 
 def find_action_space(tree):
@@ -158,23 +132,28 @@ def getTreeScore(tree, originalTree):
 	originalTreeProps = getTreeProperties(originalTree)
 
 	length_diff = abs(treeProps["total_branch_length"] - originalTreeProps["total_branch_length"])
-	n_nodes_diff = abs(treeProps["n_nodes"] - originalTreeProps["n_nodes"])
+	max_branch_length_diff = abs(treeProps["max_branch_length"] - originalTreeProps["max_branch_length"])
 	avg_terminal_distance_diff = abs(treeProps["avg_terminal_distance"] - originalTreeProps["avg_terminal_distance"])
 	
-	return avg_terminal_distance_diff * 10
+	return (avg_terminal_distance_diff * 10) + (max_branch_length_diff * 0.1)
 
 
 def getTreeProperties(tree):
 	properties = {}
 	properties['total_branch_length'] = tree.total_branch_length()
-	
+
+	max_length = 0
 	n_terminals = 0
 	total_distance = 0
-	for terminal in tree.get_terminals():
-		total_distance += tree.distance(terminal)
-		n_terminals += 1
+	for element in tree.find_elements():
+		if element.is_terminal():
+			total_distance += tree.distance(element)
+			n_terminals += 1
+		if hasattr(element, "branch_length"):
+			if element.branch_length > max_length:
+				max_length = element.branch_length
 	
-	properties['n_nodes'] = len(tree.get_nonterminals()) + n_terminals
+	properties['max_branch_length'] = max_length
 	properties['avg_terminal_distance'] = total_distance / n_terminals
 
 	return properties
@@ -212,4 +191,50 @@ def get_parent(tree, child_clade):
 
 
 if __name__ == "__main__":
-	main()
+	# main()
+
+	_, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
+	
+	calculator = DistanceCalculator('identity')
+	distMatrix = calculator.get_distance(alignment)
+	treeConstructor = DistanceTreeConstructor()
+
+	original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
+	tree = treeConstructor.upgma(distMatrix)
+
+	# This is RAxML for DNA
+	data = dendropy.DnaCharacterMatrix.get(
+	    path="pythonidae.nex",
+	    schema="nexus")
+	rx = raxml.RaxmlRunner()
+	tree = rx.estimate_tree(
+	        char_matrix=data,
+	        raxml_args=["--no-bfgs"])
+	print(tree.as_string(schema="newick"))
+
+
+	graph = Phylo.to_networkx(tree)
+
+	data = from_networkx(graph)
+
+	class GNN(torch.nn.Module):
+	    def __init__(self, input_dim, hidden_dim, output_dim):
+	        super(GNN, self).__init__()
+	        self.conv1 = GCNConv(input_dim, hidden_dim)
+	        self.conv2 = GCNConv(hidden_dim, output_dim)
+
+	    def forward(self, data):
+	    	# Here, extract a meaninful feature to do something with it
+	        x, edge_index = data.weight, data.edge_index
+	        x = F.relu(self.conv1(x, edge_index))
+	        x = F.relu(self.conv2(x, edge_index))
+	        return F.log_softmax(x, dim=1)
+
+	input_dim = 1
+	hidden_dim = 64
+	output_dim = 2
+
+	model = GNN(input_dim, hidden_dim, output_dim)
+
+	output = model(data)
+	print(output)
