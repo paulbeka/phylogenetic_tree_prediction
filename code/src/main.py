@@ -191,50 +191,43 @@ def get_parent(tree, child_clade):
 
 
 if __name__ == "__main__":
-	# main()
+	main()
 
-	_, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
-	
-	calculator = DistanceCalculator('identity')
-	distMatrix = calculator.get_distance(alignment)
-	treeConstructor = DistanceTreeConstructor()
 
-	original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
-	tree = treeConstructor.upgma(distMatrix)
 
 	# This is RAxML for DNA
-	data = dendropy.DnaCharacterMatrix.get(
-	    path="pythonidae.nex",
-	    schema="nexus")
-	rx = raxml.RaxmlRunner()
-	tree = rx.estimate_tree(
-	        char_matrix=data,
-	        raxml_args=["--no-bfgs"])
-	print(tree.as_string(schema="newick"))
+	# data = dendropy.DnaCharacterMatrix.get(
+	#     path="pythonidae.nex",
+	#     schema="nexus")
+	# rx = raxml.RaxmlRunner()
+	# tree = rx.estimate_tree(
+	#         char_matrix=data,
+	#         raxml_args=["--no-bfgs"])
+	# print(tree.as_string(schema="newick"))
 
 
-	graph = Phylo.to_networkx(tree)
+	# graph = Phylo.to_networkx(tree)
 
-	data = from_networkx(graph)
+	# data = from_networkx(graph)
 
-	class GNN(torch.nn.Module):
-	    def __init__(self, input_dim, hidden_dim, output_dim):
-	        super(GNN, self).__init__()
-	        self.conv1 = GCNConv(input_dim, hidden_dim)
-	        self.conv2 = GCNConv(hidden_dim, output_dim)
+	# class GNN(torch.nn.Module):
+	#     def __init__(self, input_dim, hidden_dim, output_dim):
+	#         super(GNN, self).__init__()
+	#         self.conv1 = GCNConv(input_dim, hidden_dim)
+	#         self.conv2 = GCNConv(hidden_dim, output_dim)
 
-	    def forward(self, data):
-	    	# Here, extract a meaninful feature to do something with it
-	        x, edge_index = data.weight, data.edge_index
-	        x = F.relu(self.conv1(x, edge_index))
-	        x = F.relu(self.conv2(x, edge_index))
-	        return F.log_softmax(x, dim=1)
+	#     def forward(self, data):
+	#     	# Here, extract a meaninful feature to do something with it
+	#         x, edge_index = data.weight, data.edge_index
+	#         x = F.relu(self.conv1(x, edge_index))
+	#         x = F.relu(self.conv2(x, edge_index))
+	#         return F.log_softmax(x, dim=1)
 
-	input_dim = 1
-	hidden_dim = 64
-	output_dim = 2
+	# input_dim = 1
+	# hidden_dim = 64
+	# output_dim = 2
 
-	model = GNN(input_dim, hidden_dim, output_dim)
+	# model = GNN(input_dim, hidden_dim, output_dim)
 
-	output = model(data)
-	print(output)
+	# output = model(data)
+	# print(output)
