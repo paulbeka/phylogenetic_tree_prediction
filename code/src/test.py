@@ -24,19 +24,19 @@ def calculate_raxml(tree):
 	print(tree.as_string(schema="newick"))
 
 
+# Or maybe I should find the optimal branch, and only train with that
+# it would be more accurate but the training time would be much longer
 def create_dataset(tree):
+	dataset = []
 	for i in range(1):
-		# make a change in the tree, store its features, calculate the likelihood
-		# the change will be a random branch that is regrafted
-		# might be worth it to check when the "randomness" reaches a maximum distance?
-		# Or maybe I should find the optimal branch, and only train with that
-		# it would be more accurate but the training time would be much longer
-		# should I make a tree handler?
-		pass
-	get_tree_features(tree)
+		actionSpace = tree.find_action_space()
+		action = random.choice(possible_actions)
+		currentTree = tree.perform_spr(action[0], action[1])
+		treeProperties = get_tree_features(tree)
+		score = calculate_raxml(treeProperties)
+		dataset.append((treeProperties, score))
 
-
-
+	return dataset
 
 
 # use the dataset to train the value network
