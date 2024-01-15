@@ -1,0 +1,8 @@
+Bio==1.6.2
+biopython==1.81
+DendroPy==4.6.1
+matplotlib==3.8.0
+networkx==3.1
+torch==2.0.1
+torch_geometric==2.4.0
+tqdm==4.66.1
