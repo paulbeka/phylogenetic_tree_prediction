@@ -13,18 +13,28 @@ RAXML_NG_SCRIPT = "raxml-ng"
 def main():
 	tree = Tree()
 	create_dataset(tree, 10)
-	
 
 
 def calculate_raxml(tree):
-	data = dendropy.DnaCharacterMatrix.get(
-	    path="pythonidae.nex",	    
-	    schema="nexus")
-	rx = raxml.RaxmlRunner()
-	tree = rx.estimate_tree(
-	        char_matrix=data,
-	        raxml_args=["--no-bfgs"])
-	print(tree.as_string(schema="newick"))
+	msa_file = "./"
+	tree_rampath = "/dev/shm/" + str(random.random())  + str(random.random()) + "tree"  # the var is the str: tmp{dir_suffix}
+
+	try:
+		with open(tree_rampath, "w") as fpw:
+			fpw.write(tree.tree.format("newick"))
+
+		raxmlProcess = Popen([RAXML_NG_SCRIPT, '--evaluate', '--msa', "data/fast_tree_dataset/COG527.fasta", '--threads', '2', '--opt-branches', 'on', '--opt-model', 'off', '--model', "LG", '--nofiles', '--tree', tree_rampath], 
+			stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+
+		raxml_stdout = raxmlProcess.communicate()[0]
+		raxml_output = raxml_stdout.decode()
+
+		print(raxml_output) # for testing
+		
+		return raxml_output
+
+	except Exception as e:
+		print(e)
 
 
 # Or maybe I should find the optimal branch, and only train with that
@@ -34,9 +44,9 @@ def create_dataset(tree, n_items):
 	for i in range(n_items):
 		actionSpace = tree.find_action_space()
 		action = random.choice(actionSpace)
-		currentTree = tree.perform_spr(action[0], action[1])
+		tree.perform_spr(action[0], action[1])
 		treeProperties = get_tree_features(tree)
-		score = calculate_raxml(treeProperties)
+		score = calculate_raxml(tree)
 		dataset.append((treeProperties, score))
 
 	return dataset

@@ -12,11 +12,13 @@ class Tree:
 
 		_, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
 
+		with open("data/fast_tree_dataset/COG527.fasta", "w") as f:
+			f.write(format(alignment, "fasta"))
+
 		calculator = DistanceCalculator('identity')
 		distMatrix = calculator.get_distance(alignment)
 		treeConstructor = DistanceTreeConstructor()
 
-		self.original_tree = read("data/fast_tree_dataset/COG527.sim.trim.tree", "newick")
 		self.tree = treeConstructor.upgma(distMatrix)
 
 
