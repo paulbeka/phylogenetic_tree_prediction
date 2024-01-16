@@ -50,7 +50,10 @@ class Tree:
 		parent.clades.remove(subtree)
 		# reorganise to remove hanging clade
 		try:
-			self.tree.get_path(parent)[-2].clades = parent.clades[0]
+			grandpa = self.tree.get_path(parent)[-2]
+			child = parent.clades[0]
+			grandpa.remove(parent)
+			grandpa.clades.append(child)
 		except:
 			tree.root.clades = parent.clades[0]
 
