@@ -40,18 +40,25 @@ class Tree:
 
 
 	def perform_spr(self, subtree, regraft_location):
+		# problem with unifurcations
+		# maybe due to leaving a branch by itself in some way?
 		parent = get_parent(self.tree, subtree)
 
 		if parent is None:
 			raise ValueError("Can't prune the root.")
-	    
+
 		parent.clades.remove(subtree)
-	    
+		# reorganise to remove hanging clade
+		try:
+			self.tree.get_path(parent)[-2].clades = parent.clades[0]
+		except:
+			tree.root.clades = parent.clades[0]
+
 		if regraft_location:
 			regraft_location.clades.append(subtree)
 		else:
 			self.tree.root.clades.append(subtree)
-	    
+
 
 def get_alignment(loc):
 	with open(f"{loc}.sim.p") as f:

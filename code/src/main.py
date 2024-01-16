@@ -7,9 +7,6 @@ import random
 import dendropy
 
 
-RAXML_NG_SCRIPT = "raxml-ng"
-
-
 def main():
 	tree = Tree()
 	create_dataset(tree, 1)

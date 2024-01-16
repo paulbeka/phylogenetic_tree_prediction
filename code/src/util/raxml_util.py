@@ -1,5 +1,8 @@
 from subprocess import Popen, PIPE, STDOUT
-import re
+import re, random
+
+
+RAXML_NG_SCRIPT = "raxml-ng"
 
 
 def calculate_raxml(tree):
@@ -15,7 +18,7 @@ def calculate_raxml(tree):
 
 		raxml_stdout = raxmlProcess.communicate()[0]
 		raxml_output = raxml_stdout.decode()
-
+		print(raxml_output)
 		result = parse_raxmlNG_content(raxml_output) # for testing
 		print(result)
 		return result
