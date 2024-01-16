@@ -3,6 +3,7 @@ from Bio.Phylo import write, read
 import dendropy
 from dendropy.calculate import treecompare
 from Bio import AlignIO
+from Bio.Phylo.BaseTree import Clade
 import csv
 
 
@@ -48,17 +49,35 @@ class Tree:
 			raise ValueError("Can't prune the root.")
 
 		parent.clades.remove(subtree)
-		# reorganise to remove hanging clade
+
+		# TODO: FIX THIS BUG
+		# reorganise to remove hanging clade -- THIS IS FLAWED FOR THE ROOT
+		child = parent.clades[0]
 		try:
 			grandpa = self.tree.get_path(parent)[-2]
-			child = parent.clades[0]
-			grandpa.remove(parent)
+			grandpa.clades.remove(parent)
 			grandpa.clades.append(child)
-		except:
-			tree.root.clades = parent.clades[0]
+		except Exception as e:
+			# Tree object has no attribute clades
+			self.tree.clades.remove(parent)
+			self.tree.root.clades.append(child)
 
+		# make sure that the regraft location has only 2 clades instead of 3 or more (?)
+		# leads to multifurcation error
+		# create a new clade with the current clade that will be appended to, and another that branches to the clade
 		if regraft_location:
-			regraft_location.clades.append(subtree)
+			new_clade = Clade()
+			path = self.tree.get_path(regraft_location)
+			# this might cause errors -> use try/except instead
+			if len(path) <= 1:
+				parent = self.tree
+			else:
+				parent = path[-2]
+			parent.clades.remove(regraft_location)
+			new_clade.clades.append(regraft_location)
+			new_clade.clades.append(subtree)
+			parent.clades.append(new_clade)
+
 		else:
 			self.tree.root.clades.append(subtree)
 
