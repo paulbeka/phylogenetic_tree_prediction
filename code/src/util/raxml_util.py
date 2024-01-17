@@ -13,14 +13,16 @@ def calculate_raxml(tree):
 		with open(tree_rampath, "w") as fpw:
 			fpw.write(tree.tree.format("newick"))
 
+		# TODO: extract the optimal branch lengths
+		# opt-branches on optimizes the branches
 		raxmlProcess = Popen([RAXML_NG_SCRIPT, '--evaluate', '--msa', "data/fast_tree_dataset/COG527.fasta", '--opt-branches', 'on', '--opt-model', 'off', '--model', "LG", '--nofiles', '--tree', tree_rampath], 
 			stdout=PIPE, stdin=PIPE, stderr=STDOUT)
 
 		raxml_stdout = raxmlProcess.communicate()[0]
 		raxml_output = raxml_stdout.decode()
-		print(raxml_output)
+
 		result = parse_raxmlNG_content(raxml_output) # for testing
-		print(result)
+
 		return result
 
 	except Exception as e:

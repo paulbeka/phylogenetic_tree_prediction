@@ -41,8 +41,6 @@ class Tree:
 
 
 	def perform_spr(self, subtree, regraft_location):
-		# problem with unifurcations
-		# maybe due to leaving a branch by itself in some way?
 		parent = get_parent(self.tree, subtree)
 
 		if parent is None:
@@ -62,9 +60,6 @@ class Tree:
 			self.tree.clades.remove(parent)
 			self.tree.root.clades.append(child)
 
-		# make sure that the regraft location has only 2 clades instead of 3 or more (?)
-		# leads to multifurcation error
-		# create a new clade with the current clade that will be appended to, and another that branches to the clade
 		if regraft_location:
 			new_clade = Clade()
 			path = self.tree.get_path(regraft_location)

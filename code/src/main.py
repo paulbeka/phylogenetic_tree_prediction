@@ -9,7 +9,8 @@ import dendropy
 
 def main():
 	tree = Tree()
-	create_dataset(tree, 1)
+	dataset = create_dataset(tree, 3)
+	print(dataset)
 
 
 # Or maybe I should find the optimal branch, and only train with that
@@ -19,10 +20,10 @@ def create_dataset(tree, n_items):
 	for i in range(n_items):
 		actionSpace = tree.find_action_space()
 		action = random.choice(actionSpace)
-		# TODO: SPR operation not working --> not being parsed by RAxML-ng
+		treeProperties = get_tree_features(tree, action[0], action[1])
+		# TODO: fix SPR fringe errors
 		tree.perform_spr(action[0], action[1])
-		treeProperties = get_tree_features(tree)
-		score = calculate_raxml(tree)
+		score = calculate_raxml(tree)["ll"]
 		dataset.append((treeProperties, score))
 
 	return dataset
