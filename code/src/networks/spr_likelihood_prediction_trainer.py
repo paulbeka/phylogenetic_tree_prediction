@@ -37,6 +37,6 @@ def train_value_network(dataset):
 
 		print(f"Saving epoch {epoch+1}...")
 
-		torch.save(model.state_dict(), f"deconstructScoreOutputFile_{epoch+1}")
+	torch.save(model.state_dict(), "output")
 
 	return model

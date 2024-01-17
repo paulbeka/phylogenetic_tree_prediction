@@ -46,35 +46,22 @@ class Tree:
 		if parent is None:
 			raise ValueError("Can't prune the root.")
 
+		# remove the subtree
 		parent.clades.remove(subtree)
 
-		# TODO: FIX THIS BUG
-		# reorganise to remove hanging clade -- THIS IS FLAWED FOR THE ROOT
+		# restructure tree to remove unifurvations
 		child = parent.clades[0]
-		try:
-			grandpa = self.tree.get_path(parent)[-2]
-			grandpa.clades.remove(parent)
-			grandpa.clades.append(child)
-		except Exception as e:
-			# Tree object has no attribute clades
-			self.tree.clades.remove(parent)
-			self.tree.root.clades.append(child)
+		grandpa = get_parent(self.tree, parent)
+		grandpa.clades.remove(parent)
+		grandpa.clades.append(child)
 
-		if regraft_location:
-			new_clade = Clade()
-			path = self.tree.get_path(regraft_location)
-			# this might cause errors -> use try/except instead
-			if len(path) <= 1:
-				parent = self.tree
-			else:
-				parent = path[-2]
-			parent.clades.remove(regraft_location)
-			new_clade.clades.append(regraft_location)
-			new_clade.clades.append(subtree)
-			parent.clades.append(new_clade)
-
-		else:
-			self.tree.root.clades.append(subtree)
+		# graft new clade
+		new_clade = Clade()
+		parent = get_parent(self.tree, regraft_location)
+		parent.clades.remove(regraft_location)
+		new_clade.clades.append(regraft_location)
+		new_clade.clades.append(subtree)
+		parent.clades.append(new_clade)
 
 
 def get_alignment(loc):

@@ -27,6 +27,3 @@ def get_tree_features(tree, subtree, regrft_loc):
 
 	return features
 
-
-def get_min_distance_to_edge_nodes(tree):
-	pass
