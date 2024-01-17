@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class ScoreFinder(nn.Module):
+class SprScoreFinder(nn.Module):
 	def __init__(self, batch_size):
-		super(ScoreFinder, self).__init__()
+		super(SprScoreFinder, self).__init__()
 		
-		self.firstLayer = nn.Linear(3, 10)
+		self.firstLayer = nn.Linear(6, 10)
 		self.secondLayer = nn.Linear(10, 10)
 		self.finalLayer = nn.Linear(10, 1)
 
