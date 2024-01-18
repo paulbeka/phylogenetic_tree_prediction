@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 def main():
 	tree = Tree() # add str input for loc
-	dataset, base_ll = create_dataset(tree, 100)
+	dataset, base_ll = create_dataset(tree, 1000)
 	
 	# For testing on Windows
 	# dataset = [
@@ -32,6 +32,7 @@ def create_dataset(tree, n_items):
 	base_ll = []
 	prev_ll = None
 	for i in tqdm(range(n_items)):
+		
 		actionSpace = tree.find_action_space()
 		action = random.choice(actionSpace)
 
@@ -48,7 +49,7 @@ def create_dataset(tree, n_items):
 
 		dataset.append((treeProperties, score))
 
-	return dataset, basell
+	return dataset, base_ll
 
 
 
