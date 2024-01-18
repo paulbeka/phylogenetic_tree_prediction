@@ -17,4 +17,5 @@ class SprScoreFinder(nn.Module):
 	def forward(self, x):
 		x = self.relu(self.firstLayer(x))
 		x = self.relu(self.secondLayer(x))
-		return self.finalLayer(x)
+		x = self.finalLayer(x)
+		return x

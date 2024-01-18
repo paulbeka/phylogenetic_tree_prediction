@@ -1,11 +1,15 @@
-import torch
+import torch, random
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import os
+import os, sys
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+sys.path.append("..") 
 
 from .spr_likelihood_network import SprScoreFinder
+from get_tree_features import get_tree_features
 
 
 def train_test_split(dataset, batch_size=1):
@@ -32,8 +36,8 @@ def train_value_network(train_loader):
 		print(f"Epoch: {epoch+1}/{num_epochs}")
 		for i, (items, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
 
-			outputs = model(items)
-			loss = criterion(outputs.double(), labels.double())
+			outputs = model(items.double())
+			loss = criterion(outputs.double(), labels.unsqueeze(1).double())
 
 			optimizer.zero_grad()
 			loss.backward()
@@ -48,12 +52,13 @@ def train_value_network(train_loader):
 
 def test_value_network(model, test_loader):
 
+	criterion = nn.MSELoss()
 	with torch.no_grad():
 		test_loss = 0
 		for configs, labels in test_loader:
 			outputs = model(configs.double())
 
-			test_loss += criterion(outputs, labels)
+			test_loss += criterion(outputs, labels.unsqueeze(1))
 
 
 		print(f"Total loss: {test_loss / len(test_loader)}")
@@ -61,16 +66,18 @@ def test_value_network(model, test_loader):
 
 def test_model_ll_increase(model, tree, n_iters=50):
 	moves = []
-	for i in range(n_iters):
-		action_space = tree.find_action_space()
+	for i in tqdm(range(n_iters)):
+		action_space = random.sample(tree.find_action_space(), 10)
 		best_move = None
 		for action in action_space:
-			output = model(action)
+			input_tensor = torch.tensor(list(get_tree_features(tree, action[0], action[1]).values()))
+			output = model(input_tensor.double())
 			if best_move == None:
 				best_move = (action, output)
 			elif output > best_move[1]:
 				best_move = (action, output)
 
+		moves.append(best_move[1].item())
 		tree.perform_spr(best_move[0][0], best_move[0][1])
 
 	plt.plot(moves)

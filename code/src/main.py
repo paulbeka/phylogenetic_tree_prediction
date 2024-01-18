@@ -10,11 +10,19 @@ import matplotlib.pyplot as plt
 
 def main():
 	tree = Tree() # add str input for loc
-	dataset, base_ll = create_dataset(tree, 20)
+	dataset, base_ll = create_dataset(tree, 300)
+
+	
+	# For testing on Windows
+	# dataset = [
+	# 	({"main_tree_branch_tot": 0, "subtree_branch_tot": 0, "regrft_branch_tot": 0, "branch_dist": 0, "subtree_centrality": 0, "regrft_centrality": 0}, 0.0),
+	# 	({"main_tree_branch_tot": 0, "subtree_branch_tot": 0, "regrft_branch_tot": 0, "branch_dist": 0, "subtree_centrality": 0, "regrft_centrality": 0}, 0.0),
+	# 	({"main_tree_branch_tot": 0, "subtree_branch_tot": 0, "regrft_branch_tot": 0, "branch_dist": 0, "subtree_centrality": 0, "regrft_centrality": 0}, 0.0),
+	# ]
 
 	# show that the ll is going down as we random search
-	plt.plot([x[1] for x in base_ll])
-	plt.show()
+	# plt.plot([x[1] for x in base_ll])
+	# plt.show()
 
 	train, test = train_test_split(dataset)
 	model = train_value_network(train)
