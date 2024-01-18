@@ -5,6 +5,7 @@ from networks.spr_likelihood_prediction_trainer import train_value_network
 
 import random, dendropy
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -17,6 +18,8 @@ def main():
 	# 	({"main_tree_branch_tot": 0, "subtree_branch_tot": 0, "regrft_branch_tot": 0, "branch_dist": 0, "subtree_centrality": 0, "regrft_centrality": 0}, 0),
 	# 	({"main_tree_branch_tot": 0, "subtree_branch_tot": 0, "regrft_branch_tot": 0, "branch_dist": 0, "subtree_centrality": 0, "regrft_centrality": 0}, 0),
 	# ]
+
+	plt.plot([x[1] for x in base_ll])
 
 	model = train_value_network(dataset)
 	test_value_network(model)
@@ -35,12 +38,13 @@ def create_dataset(tree, n_items):
 		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 		treeProperties = get_tree_features(tree, action[0], original_point)
 
-		base_ll.append((i, float(ll)))
+		raxml_score = float(calculate_raxml(tree)["ll"])
+		base_ll.append((i, raxml_score))
 
 		if not prev_ll:
-			score = float(abs(calculate_raxml(tree)["ll"]))
+			score = abs(raxml_score)
 		else:
-			score = prev_ll - abs(float(calculate_raxml(tree)["ll"]))
+			score = prev_ll - abs(raxml_score)
 
 		dataset.append((treeProperties, score))
 

@@ -9,9 +9,10 @@ import csv
 
 class Tree:
 
+	# TODO: THIS IS NOT LOADING THE ORIGINAL TREE, BUT INSTEAD CALCULATING THE UPGMA TREE
 	def __init__(self):
 
-		_, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
+		tree, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
 
 		with open("data/fast_tree_dataset/COG527.fasta", "w") as f:
 			f.write(format(alignment, "fasta"))
@@ -21,10 +22,11 @@ class Tree:
 		treeConstructor = DistanceTreeConstructor()
 
 		self.tree = treeConstructor.upgma(distMatrix)
+		# self.tree = tree
 
 
 	def find_action_space(self):
-		nodes = [node for node in self.tree.find_clades()]
+		nodes = [node for node in self.tree.find_clades() if node != self.tree.root]
 
 		actionSpace = []
 		for node in nodes:
