@@ -24,10 +24,7 @@ class Tree:
 
 
 	def find_action_space(self):
-		nodes = []
-
-		for clade in self.tree.find_clades():
-			nodes.append(clade)
+		nodes = [node for node in self.tree.find_clades()]
 
 		actionSpace = []
 		for node in nodes:
@@ -40,7 +37,7 @@ class Tree:
 		return actionSpace
 
 
-	def perform_spr(self, subtree, regraft_location):
+	def perform_spr(self, subtree, regraft_location, return_parent=False):
 		parent = get_parent(self.tree, subtree)
 
 		if parent is None:
@@ -49,7 +46,7 @@ class Tree:
 		# remove the subtree
 		parent.clades.remove(subtree)
 
-		# restructure tree to remove unifurvations
+		# restructure tree to remove unifurcations
 		child = parent.clades[0]
 		grandpa = get_parent(self.tree, parent)
 		grandpa.clades.remove(parent)
@@ -62,6 +59,10 @@ class Tree:
 		new_clade.clades.append(regraft_location)
 		new_clade.clades.append(subtree)
 		parent.clades.append(new_clade)
+
+		if return_parent:
+			return child
+
 
 
 def get_alignment(loc):

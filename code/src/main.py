@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 def main():
 	tree = Tree() # add str input for loc
-	dataset = create_dataset(tree, 100)
+	dataset, base_ll = create_dataset(tree, 100)
 	
 	# For testing on Windows
 	# dataset = [
@@ -26,16 +26,25 @@ def main():
 # it would be more accurate but the training time would be much longer
 def create_dataset(tree, n_items):
 	dataset = []
+	base_ll = []
+	prev_ll = None
 	for i in tqdm(range(n_items)):
 		actionSpace = tree.find_action_space()
 		action = random.choice(actionSpace)
-		treeProperties = get_tree_features(tree, action[0], action[1])
-		# TODO: fix SPR fringe errors
-		tree.perform_spr(action[0], action[1])
-		score = float(calculate_raxml(tree)["ll"])
+
+		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+		treeProperties = get_tree_features(tree, action[0], original_point)
+
+		base_ll.append((i, float(ll)))
+
+		if not prev_ll:
+			score = float(abs(calculate_raxml(tree)["ll"]))
+		else:
+			score = prev_ll - abs(float(calculate_raxml(tree)["ll"]))
+
 		dataset.append((treeProperties, score))
 
-	return dataset
+	return dataset, basell
 
 
 

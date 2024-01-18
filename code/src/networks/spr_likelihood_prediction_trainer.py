@@ -8,6 +8,14 @@ from tqdm import tqdm
 from .spr_likelihood_network import SprScoreFinder
 
 
+# Fix this
+def train_test_split(dataset):
+	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
+	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
+	test_loader = None
+	return train_loader, test_loader
+
+
 def train_value_network(dataset):
 
 	num_epochs = 10
@@ -18,10 +26,6 @@ def train_value_network(dataset):
 
 	criterion = nn.MSELoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-	# Load data into torch format
-	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
-	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
 
 	total_steps = len(train_loader)
 	for epoch in range(num_epochs):
@@ -40,3 +44,7 @@ def train_value_network(dataset):
 	torch.save(model.state_dict(), "output")
 
 	return model
+
+
+def test_value_network(model, dataset):
+	pass
