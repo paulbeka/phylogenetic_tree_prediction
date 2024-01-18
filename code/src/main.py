@@ -1,7 +1,7 @@
 from get_tree_features import get_tree_features
 from util.tree_manager import Tree
 from util.raxml_util import calculate_raxml
-from networks.spr_likelihood_prediction_trainer import train_value_network
+from networks.spr_likelihood_prediction_trainer import train_test_split, train_value_network, test_value_network
 
 import random, dendropy
 from tqdm import tqdm
@@ -21,8 +21,9 @@ def main():
 
 	plt.plot([x[1] for x in base_ll])
 
-	model = train_value_network(dataset)
-	test_value_network(model)
+	train, test = train_test_split(dataset)
+	model = train_value_network(train)
+	test_value_network(model, test)
 
 
 # Or maybe I should find the optimal branch, and only train with that

@@ -16,7 +16,7 @@ def train_test_split(dataset):
 	return train_loader, test_loader
 
 
-def train_value_network(dataset):
+def train_value_network(train_loader):
 
 	num_epochs = 10
 	batch_size = 1
@@ -32,7 +32,7 @@ def train_value_network(dataset):
 		print(f"Epoch: {epoch+1}/{num_epochs}")
 		for i, (items, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
 
-			outputs = model(items.double())
+			outputs = model(items)
 			loss = criterion(outputs.double(), labels.double())
 
 			optimizer.zero_grad()
@@ -47,4 +47,12 @@ def train_value_network(dataset):
 
 
 def test_value_network(model, dataset):
-	pass
+	with torch.no_grad():
+		test_loss = 0
+		for configs, labels in test_loader:
+			outputs = model(configs.double())
+
+			test_loss += criterion(outputs, labels)
+
+
+		print(f"Total loss: {test_loss / len(test_loader)}")
