@@ -4,7 +4,7 @@ import dendropy
 from dendropy.calculate import treecompare
 from Bio import AlignIO
 from Bio.Phylo.BaseTree import Clade
-import csv
+import csv, random
 
 
 class Tree:
@@ -99,3 +99,10 @@ def get_parent(tree, child_clade):
 
 def get_tree_and_alignment(loc):
 	return (get_tree(loc), get_alignment(loc))
+
+
+def randomize_tree(tree):
+	for i in range(random.randint(10, 50)):
+		next_action = random.choice(tree.find_action_space())
+		tree.perform_spr(next_action[0], next_action[1])
+	return tree

@@ -8,11 +8,11 @@ from tqdm import tqdm
 from .spr_likelihood_network import SprScoreFinder
 
 
-# Fix this
-def train_test_split(dataset):
+def train_test_split(dataset, batch_size=1):
 	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
 	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
-	test_loader = None
+	# TODO: run multiple trees and keep some for test data
+	test_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
 	return train_loader, test_loader
 
 
@@ -46,7 +46,8 @@ def train_value_network(train_loader):
 	return model
 
 
-def test_value_network(model, dataset):
+def test_value_network(model, test_loader):
+
 	with torch.no_grad():
 		test_loss = 0
 		for configs, labels in test_loader:
@@ -56,3 +57,21 @@ def test_value_network(model, dataset):
 
 
 		print(f"Total loss: {test_loss / len(test_loader)}")
+
+
+def test_model_ll_increase(model, tree, n_iters=50):
+	moves = []
+	for i in range(n_iters):
+		action_space = tree.find_action_space()
+		best_move = None
+		for action in action_space:
+			output = model(action)
+			if best_move == None:
+				best_move = (action, output)
+			elif output > best_move[1]:
+				best_move = (action, output)
+
+		tree.perform_spr(best_move[0][0], best_move[0][1])
+
+	plt.plot(moves)
+	plt.show()
