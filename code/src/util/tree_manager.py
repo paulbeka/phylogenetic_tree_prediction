@@ -10,17 +10,19 @@ import csv, random
 class Tree:
 
 	# TODO: THIS IS NOT LOADING THE ORIGINAL TREE, BUT INSTEAD CALCULATING THE UPGMA TREE
-	def __init__(self):
+	def __init__(self, loc):
 
-		tree, alignment = get_tree_and_alignment("data/fast_tree_dataset/COG527")
+		tree, alignment = get_tree_and_alignment(loc)
 
-		with open("data/fast_tree_dataset/COG527.fasta", "w") as f:
+		filename = loc.split(".")[0]
+		with open(f"{filename}.fasta", "w") as f:
 			f.write(format(alignment, "fasta"))
 
 		calculator = DistanceCalculator('identity')
 		distMatrix = calculator.get_distance(alignment)
 		treeConstructor = DistanceTreeConstructor()
 
+		self.alignment = get_alignment_sequence_dict(alignment)
 		self.tree = treeConstructor.upgma(distMatrix)
 		# self.tree = tree
 
