@@ -13,14 +13,6 @@ from util.raxml_util import calculate_raxml
 from get_tree_features import get_tree_features
 
 
-def train_test_split(dataset, batch_size=1):
-	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
-	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
-	# TODO: run multiple trees and keep some for test data
-	test_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
-	return train_loader, test_loader
-
-
 def train_value_network(train_loader):
 
 	num_epochs = 10
@@ -101,3 +93,18 @@ def test_model_ll_increase(model, tree, n_iters=50):
 
 	plt.plot(moves)
 	plt.show()
+
+
+def get_dataloader(dataset, batch_size=1):
+	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
+	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
+	return train_loader
+
+
+def train_test_split(dataset, batch_size=1):
+	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
+	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
+	# TODO: run multiple trees and keep some for test data
+	test_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
+	return train_loader, test_loader
+	

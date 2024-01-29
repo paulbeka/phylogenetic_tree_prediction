@@ -6,57 +6,54 @@ from torch_geometric.utils.convert import from_networkx
 from torch.nn import Linear
 from torch_geometric.nn import GCNConv
 from collections import Counter
+import torch.nn.functional as F
 
 
-BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'total', 'D', 'H', 'K', 'Y', 'N', 'L', 'F', 'T', 'C', 'M', 'G', 'E', 'W']
+BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'D', 'H', 'K', 'Y', 'N', 'L', 'F', 'T', 'C', 'M', 'G', 'E', 'W']
 
 
 class GCN(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_channels):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(21, 4)
-        self.conv2 = GCNConv(4, 4)
-        self.conv3 = GCNConv(4, 2)
-        self.classifier = Linear(2, 1)
+        self.conv1 = GCNConv(21, hidden_channels)
+        self.conv2 = GCNConv(hidden_channels, hidden_channels)
+        self.classifier = Linear(hidden_channels, 1)
+
 
     def forward(self, x, edge_index):
-        print(x)
         h = self.conv1(x, edge_index)
-        h = h.tanh()
+        h = h.relu()
         h = self.conv2(h, edge_index)
-        h = h.tanh()
-        h = self.conv3(h, edge_index)
-        h = h.tanh()  # Final GNN embedding space.
-        
-        # Apply a final (linear) classifier.
+        h.relu()
+        h = F.dropout(h, p=0.5, training=self.training)
         out = self.classifier(h)
+        return out
 
-        return out, h
 
+def train_gnn_network(dataset):
+	n_epochs = 100
+	lr = 0.001
 
-def train_gnn_network(tree):
-	model = GCN()
-	criterion = torch.nn.CrossEntropyLoss()
-	optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+	model = GCN(hidden_channels=32)
+	criterion = torch.nn.MSELoss()
+	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 	def train(data):
 		optimizer.zero_grad()
-		out, h = model(tree.tree.root, 0)
-		loss = criterion(0, 0)
+		out = model(data.x.float(), data.edge_index)
+		loss = criterion(out, data.y.unsqueeze(1).float())
 		loss.backward()
 		optimizer.step()
-		return loss, h
+		return loss
 
-	for epoch in range(401):
-		data = load_tree(tree)
-		print(data)
-		print(data.A)
-		loss, h = train(data)
+	for epoch in range(n_epochs):
+		for data in dataset:
+			loss = train(data)
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
 
 # TODO: OPTIMIZE THIS CODE 
-def load_tree(tree):
+def load_tree(tree, original_point=None):
 
 	G = nx.Graph()
 
@@ -91,7 +88,12 @@ def load_tree(tree):
 
 		payload_dict[curr.name] = payload
 
-		nodes.append((curr, {x: payload[x] if x in payload else 0 for x in BASE_SEQUENCES}))
+		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
+		dat = torch.tensor(list(dat.values()))
+		if original_point == curr:
+			nodes.append((curr, {"x": dat, "y": 10}))
+		else:
+			nodes.append((curr, {"x": dat, "y": 0}))
 
 		done.append(curr)
 		queue.remove(curr)
