@@ -16,7 +16,7 @@ WINDOWS = False
 
 
 def data_generation(args, returnData=False):
-	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:4]
+	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:3]
 
 	training_data = {
 		"spr": [],
@@ -59,7 +59,6 @@ def test(args, models=None):
 	if models[1]:
 		test_gnn_network(models[1], random_tree)
 		
-
 
 def complete(args):
 	training_data = data_generation(args, returnData=True)
