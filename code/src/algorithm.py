@@ -1,3 +1,7 @@
+import torch
+
+
+N_TOP = 3
 
 
 def train_algorithm(tree, n_iters):
@@ -7,7 +11,7 @@ def train_algorithm(tree, n_iters):
 def apply_algorithm(tree, n_iters):
 	for i in range(n_iters):
 		tree_gnn_data = load_tree(tree)
-		gnn_model(tree_gnn_data)
+		_, top = torch.topk(gnn_model(tree_gnn_data), N_TOP)
 		# get the maximum value
 		top_candidates = []
 

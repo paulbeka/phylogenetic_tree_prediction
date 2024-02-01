@@ -13,28 +13,34 @@ BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'D', 'H', 'K', 'Y', 'N
 
 
 class GCN(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, hidden_channels=32):
         super(GCN, self).__init__()
         self.conv1 = GCNConv(21, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.classifier = Linear(hidden_channels, 1)
+        self.conv2 = GCNConv(hidden_channels, 2*hidden_channels)
+        self.conv3 = GCNConv(2*hidden_channels, hidden_channels)
+        self.linear1 = Linear(hidden_channels, 20)
+        self.linear2 = Linear(20, 1)
 
 
     def forward(self, x, edge_index):
-        h = self.conv1(x, edge_index)
-        h = h.relu()
-        h = self.conv2(h, edge_index)
-        h.relu()
-        h = F.dropout(h, p=0.5, training=self.training)
-        out = self.classifier(h)
-        return out
+        x = self.conv1(x, edge_index)
+        x = x.relu()
+        x = self.conv2(x, edge_index)
+        x = x.relu()
+        x = self.conv3(x, edge_index)
+        x = x.relu()
+        # x = F.dropout(x, p=0.5, training=self.training)
+        x = self.linear1(x)
+        x = x.relu()
+        x = self.linear2(x)
+        return x
 
 
 def train_gnn_network(dataset):
 	n_epochs = 100
-	lr = 0.001
+	lr = 0.0001
 
-	model = GCN(hidden_channels=32)
+	model = GCN()
 	criterion = torch.nn.MSELoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -93,7 +99,7 @@ def load_tree(tree, original_point=None):
 		if original_point == curr:
 			nodes.append((curr, {"x": dat, "y": 10}))
 		else:
-			nodes.append((curr, {"x": dat, "y": 0}))
+			nodes.append((curr, {"x": dat, "y": 1})) # set to 1 so gradient doesn't die
 
 		done.append(curr)
 		queue.remove(curr)
@@ -116,6 +122,13 @@ def get_amino_acid_frequency(sequence):
 	return data
 
 
+def test_gnn_network(model, tree):
+	model_remove = torch.argmax(model(tree))
+	
+
+
+
+### UTILITY CLASSES ###
 def visualize_graph(G):
     plt.figure(figsize=(20,20))
     plt.xticks([])
@@ -124,8 +137,6 @@ def visualize_graph(G):
     plt.show()
 
 
-
-### UTILITY CLASSES ###
 def combine_dicts(A, B):
 	return {x: A.get(x, 0) + B.get(x, 0) for x in set(A).union(B)}
 
