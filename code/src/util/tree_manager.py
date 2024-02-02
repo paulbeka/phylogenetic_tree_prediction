@@ -12,6 +12,7 @@ class Tree:
 	# TODO: THIS IS NOT LOADING THE ORIGINAL TREE, BUT INSTEAD CALCULATING THE UPGMA TREE
 	def __init__(self, loc):
 
+		self.location = loc
 		tree, alignment = get_tree_and_alignment(loc)
 
 		filename = loc.split(".")[0]

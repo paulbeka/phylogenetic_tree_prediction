@@ -1,4 +1,5 @@
 import torch
+import random
 import matplotlib.pyplot as plt
 import networkx as nx
 from torch_geometric.utils import to_networkx
@@ -37,7 +38,7 @@ class GCN(torch.nn.Module):
 
 
 def train_gnn_network(dataset):
-	n_epochs = 100
+	n_epochs = 50
 	lr = 0.0001
 
 	model = GCN()
@@ -57,6 +58,8 @@ def train_gnn_network(dataset):
 			loss = train(data)
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
+	return model
+	
 
 # TODO: OPTIMIZE THIS CODE 
 def load_tree(tree, original_point=None):
@@ -65,6 +68,7 @@ def load_tree(tree, original_point=None):
 
 	nodes = []
 	edges = []
+	attrs = {}
 
 	queue = [node for node in tree.tree.find_clades(terminal=True)]
 	waiting_parents = set({})
@@ -84,6 +88,8 @@ def load_tree(tree, original_point=None):
 			)
 			edges.append((curr, curr.clades[0]))
 			edges.append((curr, curr.clades[1]))
+			attrs[(curr, curr.clades[0])] = {"length": curr.clades[0].branch_length}
+			attrs[(curr, curr.clades[1])] = {"length": curr.clades[1].branch_length}
 
 		parent = get_parent(tree.tree, curr)
 		if parent not in queue and parent not in done:
@@ -97,9 +103,9 @@ def load_tree(tree, original_point=None):
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
 		if original_point == curr:
-			nodes.append((curr, {"x": dat, "y": 10}))
+			nodes.append((curr, {"x": dat, "y": 1}))
 		else:
-			nodes.append((curr, {"x": dat, "y": 1})) # set to 1 so gradient doesn't die
+			nodes.append((curr, {"x": dat, "y": 0}))
 
 		done.append(curr)
 		queue.remove(curr)
@@ -107,6 +113,7 @@ def load_tree(tree, original_point=None):
 
 	G.add_nodes_from(nodes)
 	G.add_edges_from(edges)
+	nx.set_edge_attributes(G, attrs)
 
 	return from_networkx(G)
 
@@ -122,9 +129,22 @@ def get_amino_acid_frequency(sequence):
 	return data
 
 
-def test_gnn_network(model, tree):
-	model_remove = torch.argmax(model(tree))
-	
+def test_gnn_network(model, data):
+	criterion = torch.nn.MSELoss()
+	loss = 0
+
+	n_correct = 0
+	for item in data:
+		print(item)
+		out = model(item.x.float(), item.edge_index)
+		pred = torch.argmax(out)
+		print(pred)
+		loss += criterion(out, data.y.unsqueeze(1).float())
+		if item[pred] == 1:
+			n_correct += 1
+
+	print(f"Accuracy of: {(n_correct/len(data))*100}")
+	print(f"Average loss of: {(loss/len(data))*100}")
 
 
 

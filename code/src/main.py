@@ -4,7 +4,7 @@ from util.raxml_util import calculate_raxml
 from networks.spr_likelihood_prediction_trainer import get_dataloader, train_value_network, test_value_network, test_model_ll_increase
 from networks.gnn_network import load_tree, train_gnn_network
 
-import random, dendropy, os, argparse, pickle
+import random, dendropy, os, argparse, pickle, torch
 from datetime import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ WINDOWS = False
 
 
 def data_generation(args, returnData=False):
-	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:3]
+	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:4]
 
 	training_data = {
 		"spr": [],
@@ -51,24 +51,34 @@ def train(args):
 	torch.save(gnn_model.state_dict(), f"{args.save_path}/gnn_model")
 
 
-def test(args, models=None):
-	random_tree = randomize_tree(tree)
+def test(args, data=None, models=None):
 
-	if models[0]:
-		test_model_ll_increase(models[0], random_tree)
-	if models[1]:
-		test_gnn_network(models[1], random_tree)
+	if data:
+		test_gnn_network(models[1], data)
+
+
+	# random_tree = randomize_tree(tree)
+
+	# if models[0]:
+	# 	test_model_ll_increase(models[0], random_tree)
+	# if models[1]:
+	# 	test_gnn_network(models[1], random_tree)
 		
 
 def complete(args):
-	training_data = data_generation(args, returnData=True)
+	data = data_generation(args, returnData=True)
+	training_data = data["gnn"][:3]
+	testing_data = data["gnn"][3:]
 
 	# training_data["spr"] = get_dataloader(training_data["spr"])
 	
 	# spr_model = train_value_network(training_data["spr"])
-	gnn_model = train_gnn_network(training_data["gnn"])
+	gnn_model = train_gnn_network(training_data)
 
-	test(args, models=(None, gnn_model))
+	# torch.save(spr_model.state_dict(), f"{args.save_path}/spr_model")
+	torch.save(gnn_model.state_dict(), f"{args.save_path}/gnn_model")
+
+	test(args, data=testing_data, models=(None, gnn_model))
 
 
 def create_dataset(tree, n_items=250, rapid=True):
@@ -138,7 +148,4 @@ if __name__ == "__main__":
 
 	WINDOWS = args.windows
 
-	try:
-		exec(f"{args.mode}(args)")
-	except Exception as e:
-		print(e)
+	exec(f"{args.mode}(args)")
