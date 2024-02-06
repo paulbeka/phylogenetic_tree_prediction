@@ -2,7 +2,8 @@ from get_tree_features import get_tree_features
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_likelihood_prediction_trainer import get_dataloader, train_value_network, test_value_network, test_model_ll_increase
-from networks.gnn_network import load_tree, train_gnn_network
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network
+from networks.node_network import train_node_network, load_node_data, test_node_network
 
 import random, dendropy, os, argparse, pickle, torch
 from datetime import datetime
@@ -15,8 +16,8 @@ BASE_DIR = os.getcwd()
 WINDOWS = False
 
 
-def data_generation(args, returnData=False):
-	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:4]
+def data_generation(args, returnData=False, score_correct=None):
+	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:10]
 
 	training_data = {
 		"spr": [],
@@ -25,20 +26,20 @@ def data_generation(args, returnData=False):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree)
+		dataset, gnn_dataset, base_ll = create_dataset(tree, score_correct=score_correct)
 		training_data["spr"] += dataset
 		training_data["gnn"] += gnn_dataset
 
-	if args.output_dest:
-		with open(f"{args.output_dest}/data_generation_output.pickle", "wb") as f:
-			pickle.dump(training_data, f)
-
-	else:
-		with open(f"data_generation_output.pickle", "wb") as f:
-			pickle.dump(training_data, f)
 
 	if returnData:
 		return training_data
+	else:
+		if args.output_dest:
+			with open(f"{args.output_dest}/data_generation_output.pickle", "wb") as f:
+				pickle.dump(training_data, f)
+		else:
+			with open(f"data_generation_output.pickle", "wb") as f:
+				pickle.dump(training_data, f)
 
 
 def train(args):
@@ -47,15 +48,17 @@ def train(args):
 	spr_model = train_value_network(training_data["spr"])
 	gnn_model = train_gnn_network(training_data["gnn"])
 
-	torch.save(spr_model.state_dict(), f"{args.save_path}/spr_model")
-	torch.save(gnn_model.state_dict(), f"{args.save_path}/gnn_model")
+	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
+	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
 
 
 def test(args, data=None, models=None):
 
 	if data:
-		test_gnn_network(models[1], data)
+		return test_gnn_network(models[1], data)
 
+	else:
+		gnn = torch.load(args.location)
 
 	# random_tree = randomize_tree(tree)
 
@@ -66,22 +69,44 @@ def test(args, data=None, models=None):
 		
 
 def complete(args):
+	# if not args.location:
+	# else:
+	# 	with open(f"{args.location}/data_generation_output.pickle", "r") as f:
+	# 		data = pickle.load(f)
+
+	acc_scores = []
+	avg_loss_scores = []
+
 	data = data_generation(args, returnData=True)
-	training_data = data["gnn"][:3]
-	testing_data = data["gnn"][3:]
+
+	# RETEST WITH GNN AND NOT THIS STUPID [:] BLUNDER
+	training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
+	testing_data = data["gnn"][int(len(data["gnn"])*TRAIN_TEST_SPLIT):]
 
 	# training_data["spr"] = get_dataloader(training_data["spr"])
 	
 	# spr_model = train_value_network(training_data["spr"])
-	gnn_model = train_gnn_network(training_data)
+	# gnn_model = train_gnn_network(training_data)
+	node_model = train_node_network(training_data)
 
-	# torch.save(spr_model.state_dict(), f"{args.save_path}/spr_model")
-	torch.save(gnn_model.state_dict(), f"{args.save_path}/gnn_model")
+	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
+	# torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
 
-	test(args, data=testing_data, models=(None, gnn_model))
+	# acc, loss = test(args, data=testing_data, models=(None, gnn_model))
+	# acc_scores.append(acc)
+	# avg_loss_scores.append(loss)
+
+	test_node_network(node_model, testing_data)
 
 
-def create_dataset(tree, n_items=250, rapid=True):
+	print(acc_scores, avg_loss_scores)
+	plt.plot(acc_scores)
+	plt.show()
+	plt.plot([loss/test_score_correct[i] for i, loss in enumerate(avg_loss_scores)])
+	plt.show()
+		
+
+def create_dataset(tree, n_items=250, rapid=True, score_correct=None):
 	dataset = []
 	gnn_dataset = []
 	base_ll = []
@@ -106,9 +131,10 @@ def create_dataset(tree, n_items=250, rapid=True):
 		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 		treeProperties = get_tree_features(tree, action[0], original_point)
 
-		# rest = 0? --> ask supervisor
-		gnn_data = load_tree(tree, original_point=original_point)
-		gnn_dataset.append(gnn_data)
+		node_data = load_node_data(tree, original_point=original_point)
+		gnn_dataset += node_data
+		# gnn_data = load_tree(tree, original_point=original_point, score_correct=score_correct)
+		# gnn_dataset.append(gnn_data)
 
 		if WINDOWS:
 			raxml_score = 0  # raxml does not work on windows 
@@ -137,13 +163,17 @@ def find_data_files(path):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(
-		prog="PhloGNN",
-		description="This is the GNN phylogenetic tree creator.")
+		prog="PhloNN",
+		description="This is the Neural Network phylogenetic tree creator.")
 	parser.add_argument("-m", "--mode", required=True,
+		help="The mode to be used when using the app. Train for training network (and you already have data), test for testing, and complete to do both.",
 		choices=["data_generation", "train", "test", "complete"])
-	parser.add_argument("-l", "--location", required=True)
-	parser.add_argument("-o", "--output_dest")
-	parser.add_argument("-w", "--windows", action="store_true")
+	parser.add_argument("-l", "--location", required=True,
+		help="Location for the input data")
+	parser.add_argument("-o", "--output_dest",
+		help="Where the output for the data should be stored.")
+	parser.add_argument("-w", "--windows", action="store_true",
+		help="If windows is being used, this flag should be true.")
 	args = parser.parse_args()
 
 	WINDOWS = args.windows

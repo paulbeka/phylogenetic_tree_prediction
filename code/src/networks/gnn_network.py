@@ -59,10 +59,10 @@ def train_gnn_network(dataset):
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
 	return model
-	
+
 
 # TODO: OPTIMIZE THIS CODE 
-def load_tree(tree, original_point=None):
+def load_tree(tree, original_point=None, score_correct=20):
 
 	G = nx.Graph()
 
@@ -103,7 +103,7 @@ def load_tree(tree, original_point=None):
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
 		if original_point == curr:
-			nodes.append((curr, {"x": dat, "y": 1}))
+			nodes.append((curr, {"x": dat, "y": score_correct}))
 		else:
 			nodes.append((curr, {"x": dat, "y": 0}))
 
@@ -115,7 +115,7 @@ def load_tree(tree, original_point=None):
 	G.add_edges_from(edges)
 	nx.set_edge_attributes(G, attrs)
 
-	return from_networkx(G)
+	yield from_networkx(G)
 
 
 def get_amino_acid_frequency(sequence):
@@ -135,17 +135,18 @@ def test_gnn_network(model, data):
 
 	n_correct = 0
 	for item in data:
-		print(item)
 		out = model(item.x.float(), item.edge_index)
 		pred = torch.argmax(out)
-		print(pred)
-		loss += criterion(out, data.y.unsqueeze(1).float())
-		if item[pred] == 1:
+		loss += criterion(out, item.y.unsqueeze(1).float())
+		if item.y[pred.item()].item() > 0:
 			n_correct += 1
 
-	print(f"Accuracy of: {(n_correct/len(data))*100}")
-	print(f"Average loss of: {(loss/len(data))*100}")
+	accuracy = (n_correct/len(data))*100
+	avg_loss = loss/len(data)
+	print(f"Accuracy of: {accuracy}")
+	print(f"Average loss of: {avg_loss}")
 
+	return accuracy, avg_loss
 
 
 ### UTILITY CLASSES ###
