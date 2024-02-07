@@ -17,7 +17,7 @@ WINDOWS = False
 
 
 def data_generation(args, returnData=False, score_correct=None):
-	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:10]
+	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:40]
 
 	training_data = {
 		"spr": [],
@@ -43,7 +43,7 @@ def data_generation(args, returnData=False, score_correct=None):
 
 
 def train(args):
-	training_data = None # load the training data here
+	training_data = None
 
 	spr_model = train_value_network(training_data["spr"])
 	gnn_model = train_gnn_network(training_data["gnn"])
@@ -83,6 +83,8 @@ def complete(args):
 	training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
 	testing_data = data["gnn"][int(len(data["gnn"])*TRAIN_TEST_SPLIT):]
 
+	random.shuffle(training_data)
+
 	# training_data["spr"] = get_dataloader(training_data["spr"])
 	
 	# spr_model = train_value_network(training_data["spr"])
@@ -98,12 +100,7 @@ def complete(args):
 
 	test_node_network(node_model, testing_data)
 
-
 	print(acc_scores, avg_loss_scores)
-	plt.plot(acc_scores)
-	plt.show()
-	plt.plot([loss/test_score_correct[i] for i, loss in enumerate(avg_loss_scores)])
-	plt.show()
 		
 
 def create_dataset(tree, n_items=250, rapid=True, score_correct=None):

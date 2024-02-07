@@ -13,7 +13,7 @@ class NodeNetwork(nn.Module):
 		
 		self.firstLayer = nn.Linear(21, 30)
 		self.secondLayer = nn.Linear(30, 10)
-		self.finalLayer = nn.Linear(10, 1)
+		self.finalLayer = nn.Linear(10, 2)
 
 		self.relu = nn.ReLU()
 
@@ -26,29 +26,55 @@ class NodeNetwork(nn.Module):
 		return x
 
 
-def train_node_network(dataset):
-	n_epochs = 50
-	lr = 0.0001
+def train_node_network(dataset, testing_data=None):
+	n_epochs = 5
+	lr = 0.001
 
 	model = NodeNetwork()
-	criterion = torch.nn.MSELoss()
+	criterion = torch.nn.BCEWithLogitsLoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+	prev_acc = 0
+
+	steps_before_test = 1000
+	curr = 0
 
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
 			out = model(data[0])
-			loss = criterion(out, torch.Tensor([data[1]]))
+			loss = criterion(out, data[1])
 			loss.backward()
 			optimizer.step()
 
-		print(f'Epoch: {epoch}, Loss: {loss}')
+			curr += 1
+
+			if testing_data and curr > steps_before_test:
+				acc = test_node_network(model, testing_data)
+				if acc > prev_acc:
+					prev_acc = acc
+				else:
+					return model
+				steps_before_test = 0
+
+				print(f'Epoch: {epoch}, Loss: {loss}')
 
 	return model
 
 
 def test_node_network(model, data):
-	pass
+	n_correct = 0
+
+	with torch.no_grad():
+		for item in data:
+			out = model(item[0])
+			if torch.argmax(out) == torch.argmax(item[1]):
+				n_correct += 1
+
+	accuracy = (n_correct/len(data))*100
+	print(f"Accuracy of {accuracy}%")
+	
+	return accuracy
 
 
 def load_node_data(tree, original_point=None):
@@ -86,14 +112,14 @@ def load_node_data(tree, original_point=None):
 		if original_point == curr:
 			nodes.append((curr, {"x": dat}))
 		else:
-			data = (dat, 1)
+			data = (dat, torch.Tensor([1, 0]))
 
 		done.append(curr)
 		queue.remove(curr)
 
 	selected = random.choice(nodes)[1]["x"]
 
-	data = [(selected, 0), data]
+	data = [(selected, torch.Tensor([0, 1])), data]
 
 	return data
 
