@@ -69,15 +69,12 @@ def test(args, data=None, models=None):
 		
 
 def complete(args):
-	# if not args.location:
-	# else:
-	# 	with open(f"{args.location}/data_generation_output.pickle", "r") as f:
-	# 		data = pickle.load(f)
 
-	acc_scores = []
-	avg_loss_scores = []
-
-	data = data_generation(args, returnData=True)
+	if args.dataset:
+		with open(args.dataset, "r") as f:
+			data = pickle.load(f) 
+	else:
+		data = data_generation(args, returnData=True)
 
 	# RETEST WITH GNN AND NOT THIS STUPID [:] BLUNDER
 	training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
@@ -89,7 +86,7 @@ def complete(args):
 	
 	# spr_model = train_value_network(training_data["spr"])
 	# gnn_model = train_gnn_network(training_data)
-	node_model = train_node_network(training_data)
+	node_model = train_node_network(training_data, testing_data=testing_data)
 
 	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
 	# torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
@@ -100,8 +97,6 @@ def complete(args):
 
 	test_node_network(node_model, testing_data)
 
-	print(acc_scores, avg_loss_scores)
-		
 
 def create_dataset(tree, n_items=250, rapid=True, score_correct=None):
 	dataset = []
@@ -166,7 +161,7 @@ if __name__ == "__main__":
 		help="The mode to be used when using the app. Train for training network (and you already have data), test for testing, and complete to do both.",
 		choices=["data_generation", "train", "test", "complete"])
 	parser.add_argument("-l", "--location", required=True,
-		help="Location for the input data")
+		help="Location for the input data (raw tree files to train)")
 	parser.add_argument("-o", "--output_dest",
 		help="Where the output for the data should be stored.")
 	parser.add_argument("-w", "--windows", action="store_true",

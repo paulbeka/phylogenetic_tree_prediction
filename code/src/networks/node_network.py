@@ -36,9 +36,9 @@ def train_node_network(dataset, testing_data=None):
 
 	prev_acc = 0
 
-	steps_before_test = 1000
-	curr = 0
-
+	steps_before_test, max_n_tries = 10000, 10
+	curr, n_tries = 0, 0
+	print(len(dataset))
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
@@ -53,8 +53,12 @@ def train_node_network(dataset, testing_data=None):
 				acc = test_node_network(model, testing_data)
 				if acc > prev_acc:
 					prev_acc = acc
-				else:
-					return model
+				
+					if n_tries < max_n_tries:
+						n_tries += 1
+					else:
+						return model
+
 				steps_before_test = 0
 
 				print(f'Epoch: {epoch}, Loss: {loss}')
@@ -72,7 +76,7 @@ def test_node_network(model, data):
 				n_correct += 1
 
 	accuracy = (n_correct/len(data))*100
-	print(f"Accuracy of {accuracy}%")
+	print(f"Accuracy of {accuracy:.2f}%")
 	
 	return accuracy
 
