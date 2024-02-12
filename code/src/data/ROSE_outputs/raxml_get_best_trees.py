@@ -14,6 +14,7 @@ def main():
 
 	for file in tqdm(files):
 		raxmlProcess = Popen([RAXML_NG_SCRIPT, '--msa', file, '--model', "LG"], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+		raxmlProcess.wait()
 
 	for file in os.scandir(os.getcwd()):
 		splitName = file.name.split(".")

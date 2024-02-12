@@ -38,7 +38,7 @@ class GCN(torch.nn.Module):
 
 
 def train_gnn_network(dataset):
-	n_epochs = 50
+	n_epochs = 10
 	lr = 0.0001
 
 	model = GCN()
@@ -48,7 +48,7 @@ def train_gnn_network(dataset):
 	def train(data):
 		optimizer.zero_grad()
 		out = model(data.x.float(), data.edge_index)
-		loss = criterion(out, data.y.unsqueeze(1).float())
+		loss = criterion(out, data.y.float())
 		loss.backward()
 		optimizer.step()
 		return loss
@@ -103,9 +103,9 @@ def load_tree(tree, original_point=None, score_correct=20):
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
 		if original_point == curr:
-			nodes.append((curr, {"x": dat, "y": score_correct}))
+			nodes.append((curr, {"x": dat, "y": torch.Tensor([score_correct])}))
 		else:
-			nodes.append((curr, {"x": dat, "y": 0}))
+			nodes.append((curr, {"x": dat, "y": torch.Tensor([0])}))
 
 		done.append(curr)
 		queue.remove(curr)
@@ -115,7 +115,7 @@ def load_tree(tree, original_point=None, score_correct=20):
 	G.add_edges_from(edges)
 	nx.set_edge_attributes(G, attrs)
 
-	yield from_networkx(G)
+	return from_networkx(G)
 
 
 def get_amino_acid_frequency(sequence):

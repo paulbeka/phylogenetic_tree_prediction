@@ -16,8 +16,8 @@ BASE_DIR = os.getcwd()
 WINDOWS = False
 
 
-def data_generation(args, returnData=False, score_correct=None):
-	data_files = find_data_files(os.path.join(BASE_DIR, args.location))[0:40]
+def data_generation(args, returnData=False):
+	data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 
 	training_data = {
 		"spr": [],
@@ -26,7 +26,7 @@ def data_generation(args, returnData=False, score_correct=None):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree, score_correct=score_correct)
+		dataset, gnn_dataset, base_ll = create_dataset(tree)
 		training_data["spr"] += dataset
 		training_data["gnn"] += gnn_dataset
 
@@ -69,8 +69,7 @@ def test(args, data=None, models=None):
 		
 
 def complete(args):
-
-	if args.dataset:
+	if "dataset" in args:
 		with open(args.dataset, "r") as f:
 			data = pickle.load(f) 
 	else:
@@ -98,7 +97,7 @@ def complete(args):
 	test_node_network(node_model, testing_data)
 
 
-def create_dataset(tree, n_items=250, rapid=True, score_correct=None):
+def create_dataset(tree, n_items=250, rapid=True):
 	dataset = []
 	gnn_dataset = []
 	base_ll = []
@@ -125,7 +124,7 @@ def create_dataset(tree, n_items=250, rapid=True, score_correct=None):
 
 		node_data = load_node_data(tree, original_point=original_point)
 		gnn_dataset += node_data
-		# gnn_data = load_tree(tree, original_point=original_point, score_correct=score_correct)
+		# gnn_data = load_tree(tree, original_point=original_point)
 		# gnn_dataset.append(gnn_data)
 
 		if WINDOWS:
@@ -148,7 +147,7 @@ def create_dataset(tree, n_items=250, rapid=True, score_correct=None):
 def find_data_files(path):
 	list_of_files = set([])
 	for file in os.scandir(path):
-		if file.name.split(".")[-1] == "tree":
+		if file.name.split(".")[-1] == "bestTree":
 			list_of_files.add(f"{path}/{file.name.split('.')[0]}")
 	return list(list_of_files)
 

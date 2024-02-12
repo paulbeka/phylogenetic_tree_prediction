@@ -27,7 +27,7 @@ class NodeNetwork(nn.Module):
 
 
 def train_node_network(dataset, testing_data=None):
-	n_epochs = 5
+	n_epochs = 20
 	lr = 0.001
 
 	model = NodeNetwork()
@@ -36,9 +36,8 @@ def train_node_network(dataset, testing_data=None):
 
 	prev_acc = 0
 
-	steps_before_test, max_n_tries = 10000, 10
+	steps_before_test, max_n_tries = 300, 10
 	curr, n_tries = 0, 0
-	print(len(dataset))
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
@@ -59,9 +58,9 @@ def train_node_network(dataset, testing_data=None):
 					else:
 						return model
 
-				steps_before_test = 0
+				curr = 0
 
-				print(f'Epoch: {epoch}, Loss: {loss}')
+		print(f'Epoch: {epoch}, Loss: {loss}')
 
 	return model
 

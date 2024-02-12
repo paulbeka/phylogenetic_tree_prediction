@@ -75,8 +75,8 @@ class Tree:
 
 
 def get_alignment(loc):
-	with open(f"{loc}.sim.p") as f:
-		return AlignIO.read(f, 'phylip')
+	with open(f"{loc}.fasta") as f:
+		return AlignIO.read(f, 'fasta')
 
 
 def get_alignment_sequence_dict(alignment):
@@ -87,7 +87,7 @@ def get_alignment_sequence_dict(alignment):
 
 
 def get_tree(loc):
-	with open(f"{loc}.sim.trim.tree") as f:
+	with open(f"{loc}.fasta.raxml.bestTree") as f:
 		data = f.read()
 		return dendropy.Tree.get(data=data, schema="newick")
 
