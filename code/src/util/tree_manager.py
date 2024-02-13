@@ -9,7 +9,6 @@ import csv, random
 
 class Tree:
 
-	# TODO: THIS IS NOT LOADING THE ORIGINAL TREE, BUT INSTEAD CALCULATING THE UPGMA TREE
 	def __init__(self, loc):
 
 		self.location = loc
@@ -19,12 +18,9 @@ class Tree:
 		with open(f"{filename}.fasta", "w") as f:
 			f.write(format(alignment, "fasta"))
 
-		calculator = DistanceCalculator('identity')
-		distMatrix = calculator.get_distance(alignment)
-		treeConstructor = DistanceTreeConstructor()
-
 		self.alignment = get_alignment_sequence_dict(alignment)
-		self.tree = treeConstructor.upgma(distMatrix)
+		self.tree = read(f"{loc}.fasta.raxml.bestTree", format="newick")
+		self.n_nodes = len(list(self.tree.find_elements()))
 		# self.tree = tree
 
 	def find_action_space(self):
@@ -62,7 +58,7 @@ class Tree:
 		grandpa.clades.append(child)
 
 		# graft new clade
-		new_clade = Clade(branch_length=0.1, name=parent.name)
+		new_clade = Clade(branch_length=0.1, name=parent.name)	# constant branch length of 0.1 
 
 		regraft_parent = get_parent(self.tree, regraft_location)
 		regraft_parent.clades.remove(regraft_location)

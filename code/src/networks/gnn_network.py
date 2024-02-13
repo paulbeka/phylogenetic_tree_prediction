@@ -17,32 +17,23 @@ class GCN(torch.nn.Module):
     def __init__(self, hidden_channels=32):
         super(GCN, self).__init__()
         self.conv1 = GCNConv(21, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, 2*hidden_channels)
-        self.conv3 = GCNConv(2*hidden_channels, hidden_channels)
-        self.linear1 = Linear(hidden_channels, 20)
-        self.linear2 = Linear(20, 1)
+        self.conv2 = GCNConv(hidden_channels, 2)
 
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
         x = x.relu()
+        x = F.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index)
-        x = x.relu()
-        x = self.conv3(x, edge_index)
-        x = x.relu()
-        # x = F.dropout(x, p=0.5, training=self.training)
-        x = self.linear1(x)
-        x = x.relu()
-        x = self.linear2(x)
         return x
 
 
 def train_gnn_network(dataset, testing_data=None):
-	n_epochs = 30
+	n_epochs = 3000
 	lr = 0.0001
 
 	model = GCN()
-	criterion = torch.nn.MSELoss()
+	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([40, 1]))
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 	def train(data):
@@ -81,7 +72,9 @@ def train_gnn_network(dataset, testing_data=None):
 
 
 # TODO: OPTIMIZE THIS CODE 
-def load_tree(tree, original_point=None, score_correct=20):
+def load_tree(tree, 
+	target=None, 		# Which node is most "out of place"
+	score_correct=20):	# Score for correct node (out of place node)
 
 	G = nx.Graph()
 
@@ -121,10 +114,10 @@ def load_tree(tree, original_point=None, score_correct=20):
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
-		if original_point == curr:
-			nodes.append((curr, {"x": dat, "y": torch.Tensor([score_correct])}))
+		if target == curr:
+			nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
 		else:
-			nodes.append((curr, {"x": dat, "y": torch.Tensor([0])}))
+			nodes.append((curr, {"x": dat, "y": torch.Tensor([0, 1])}))
 
 		done.append(curr)
 		queue.remove(curr)
@@ -149,30 +142,27 @@ def get_amino_acid_frequency(sequence):
 
 
 def test_gnn_network(model, data):
-	criterion = torch.nn.MSELoss()
-	loss = 0
 	n_correct = 0
-	n_top_5 = 0
+	n_incorrect = 0
 
 	with torch.no_grad():
 		for item in data:
 			out = model(item.x.float(), item.edge_index)
-			pred = torch.argmax(out)
-			loss += criterion(out, item.y.float())
-			if item.y[pred.item()].item() > 0:
+			preds = torch.argmax(out, axis=1)
+			y = torch.argmax(item.y, axis=1)
+			actual = torch.argmin(y).item()
+
+			if preds[actual].item() == 0:
 				n_correct += 1
 
-			actual = torch.argmax(item.y).item()
-			if torch.argsort(out.squeeze(1))[actual].item() <= 4:
-				n_top_5 += 1
-
+			for i in range(len(list(preds))):
+				if preds[i].item() != y[i].item():
+					n_incorrect += 1
 
 	accuracy = (n_correct/len(data))*100
-	acc_top_10 = (n_top_5/len(data))*100
-	avg_loss = loss/len(data)
-	print(f"Accuracy of: {accuracy:.2f}%")
-	print(f"Appears in top five {acc_top_10:.2f}% of the time.")
-	print(f"Average loss of: {avg_loss}")
+	wrong = (n_incorrect/(len(data)*len(list(y))))*100
+	print(f"Percent of true labels predicted true: {accuracy:.2f}%")
+	print(f"Percent of predictions wrong in general: {wrong:.2f}%")
 
 	return accuracy
 

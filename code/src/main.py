@@ -66,7 +66,7 @@ def complete(args):
 	# training_data["spr"] = get_dataloader(training_data["spr"])
 	
 	# spr_model = train_value_network(training_data["spr"])
-	gnn_model = train_gnn_network(training_data, testing_data=testing_data)
+	gnn_model = train_gnn_network(training_data, testing_data=training_data) #testing_data=testing_data
 	# node_model = train_node_network(training_data, testing_data=testing_data)
 
 	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
@@ -107,7 +107,9 @@ def create_dataset(tree,
 		else:
 			best = None
 			for action in actionSpace:
-				raxml_score = float(callable(tree)["ll"])
+				original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+				raxml_score = float(calculate_raxml(tree)["ll"])
+				tree.perform_spr(action[0], original_point)
 				if best and best[1] < raxml_score:
 					best = (action, raxml_score)
 				else:
@@ -120,7 +122,7 @@ def create_dataset(tree,
 
 		# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
 		# gnn_dataset += node_data
-		gnn_data = load_tree(tree, original_point=original_point)
+		gnn_data = load_tree(tree, target=action[0])
 		gnn_dataset.append(gnn_data)
 
 		if WINDOWS:
@@ -141,10 +143,11 @@ def create_dataset(tree,
 
 
 def find_data_files(path):
-	list_of_files = set([])
+	list_of_files = set()
 	for file in os.scandir(path):
 		if file.name.split(".")[-1] == "bestTree":
 			list_of_files.add(f"{path}/{file.name.split('.')[0]}")
+
 	return list(list_of_files)
 
 
