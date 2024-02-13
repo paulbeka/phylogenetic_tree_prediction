@@ -19,17 +19,7 @@ WINDOWS = False
 def data_generation(args, returnData=False):
 	data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 
-	training_data = {
-		"spr": [],
-		"gnn": []
-	}
-
-	for i in tqdm(range(len(data_files))):
-		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree)
-		training_data["spr"] += dataset
-		training_data["gnn"] += gnn_dataset
-
+	training_data = generate(data_files)
 
 	if returnData:
 		return training_data
@@ -53,19 +43,10 @@ def train(args):
 
 
 def test(args, data=None, models=None):
-
 	if data:
 		return test_gnn_network(models[1], data)
-
 	else:
 		gnn = torch.load(args.location)
-
-	# random_tree = randomize_tree(tree)
-
-	# if models[0]:
-	# 	test_model_ll_increase(models[0], random_tree)
-	# if models[1]:
-	# 	test_gnn_network(models[1], random_tree)
 		
 
 def complete(args):
@@ -73,31 +54,46 @@ def complete(args):
 		with open(args.dataset, "r") as f:
 			data = pickle.load(f) 
 	else:
-		data = data_generation(args, returnData=True)
+		files = find_data_files(os.path.join(BASE_DIR, args.location))
+		training_data = generate(files[:16], generate_true_ratio=False)["gnn"]
+		testing_data = generate(files[16:], generate_true_ratio=True)["gnn"]
 
-	# RETEST WITH GNN AND NOT THIS STUPID [:] BLUNDER
-	training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
-	testing_data = data["gnn"][int(len(data["gnn"])*TRAIN_TEST_SPLIT):]
+	# training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
+	# testing_data = data["gnn"][int(len(data["gnn"])*TRAIN_TEST_SPLIT):]
 
 	random.shuffle(training_data)
 
 	# training_data["spr"] = get_dataloader(training_data["spr"])
 	
 	# spr_model = train_value_network(training_data["spr"])
-	# gnn_model = train_gnn_network(training_data)
-	node_model = train_node_network(training_data, testing_data=testing_data)
+	gnn_model = train_gnn_network(training_data, testing_data=testing_data)
+	# node_model = train_node_network(training_data, testing_data=testing_data)
 
 	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
 	# torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
 
-	# acc, loss = test(args, data=testing_data, models=(None, gnn_model))
-	# acc_scores.append(acc)
-	# avg_loss_scores.append(loss)
 
-	test_node_network(node_model, testing_data)
+#################### NON COMMAND EXECUTABLES ####################
+
+def generate(data_files, generate_true_ratio=True):
+	training_data = {
+		"spr": [],
+		"gnn": []
+	}
+
+	for i in tqdm(range(len(data_files))):
+		tree = Tree(data_files[i]) 
+		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
+		training_data["spr"] += dataset
+		training_data["gnn"] += gnn_dataset
+
+	return training_data
 
 
-def create_dataset(tree, n_items=250, rapid=True):
+def create_dataset(tree, 
+	n_items=40,  					# Number of random mutations
+	rapid=True, 					# Find best mutation at every time step
+	generate_true_ratio=True):		# Generate 1-to-1 (even dataset) or the true ratio
 	dataset = []
 	gnn_dataset = []
 	base_ll = []
@@ -122,10 +118,10 @@ def create_dataset(tree, n_items=250, rapid=True):
 		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 		treeProperties = get_tree_features(tree, action[0], original_point)
 
-		node_data = load_node_data(tree, original_point=original_point)
-		gnn_dataset += node_data
-		# gnn_data = load_tree(tree, original_point=original_point)
-		# gnn_dataset.append(gnn_data)
+		# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
+		# gnn_dataset += node_data
+		gnn_data = load_tree(tree, original_point=original_point)
+		gnn_dataset.append(gnn_data)
 
 		if WINDOWS:
 			raxml_score = 0  # raxml does not work on windows 

@@ -27,15 +27,14 @@ class NodeNetwork(nn.Module):
 
 
 def train_node_network(dataset, testing_data=None):
-	n_epochs = 20
+	n_epochs = 40
 	lr = 0.001
 
 	model = NodeNetwork()
 	criterion = torch.nn.BCEWithLogitsLoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-	prev_acc = 0
-
+	best_acc = 0
 	steps_before_test, max_n_tries = 300, 10
 	curr, n_tries = 0, 0
 	for epoch in range(n_epochs):
@@ -50,8 +49,8 @@ def train_node_network(dataset, testing_data=None):
 
 			if testing_data and curr > steps_before_test:
 				acc = test_node_network(model, testing_data)
-				if acc > prev_acc:
-					prev_acc = acc
+				if acc > best_acc:
+					best_acc = acc
 				
 					if n_tries < max_n_tries:
 						n_tries += 1
@@ -62,25 +61,34 @@ def train_node_network(dataset, testing_data=None):
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
+	print(f"Best accuracy found: {best_acc:.2f}%")
 	return model
 
 
+# todo: increase the ratio
 def test_node_network(model, data):
 	n_correct = 0
-
+	n_positive_correct = 0
+	n_positive = 0
 	with torch.no_grad():
 		for item in data:
 			out = model(item[0])
-			if torch.argmax(out) == torch.argmax(item[1]):
+			if torch.argmax(out) == torch.argmax(item[1]):  # Calculate accuracy
 				n_correct += 1
+			if torch.argmax(item[1]) == 0:
+				n_positive += 1
+				if torch.argmax(out) == torch.argmax(item[1]): # Calculate recall
+					n_positive_correct += 1
 
 	accuracy = (n_correct/len(data))*100
+	recall = (n_positive_correct/n_positive)*100
 	print(f"Accuracy of {accuracy:.2f}%")
+	print(f"Recall of {recall:.2f}%")
 	
 	return accuracy
 
 
-def load_node_data(tree, original_point=None):
+def load_node_data(tree, original_point=None, generate_true_ratio=False):
 	nodes = []
 	data = None
 
@@ -113,16 +121,21 @@ def load_node_data(tree, original_point=None):
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
 		if original_point == curr:
-			nodes.append((curr, {"x": dat}))
-		else:
 			data = (dat, torch.Tensor([1, 0]))
+		else:
+			nodes.append((curr, {"x": dat}))
+
 
 		done.append(curr)
 		queue.remove(curr)
 
-	selected = random.choice(nodes)[1]["x"]
-
-	data = [(selected, torch.Tensor([0, 1])), data]
+	if generate_true_ratio:
+		d = [data]
+		d += [(node[1]["x"], torch.Tensor([0, 1])) for node in nodes]
+		data = d
+	else:
+		selected = random.choice(nodes)[1]["x"]
+		data = [(selected, torch.Tensor([0, 1])), data]
 
 	return data
 

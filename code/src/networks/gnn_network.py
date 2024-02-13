@@ -37,8 +37,8 @@ class GCN(torch.nn.Module):
         return x
 
 
-def train_gnn_network(dataset):
-	n_epochs = 10
+def train_gnn_network(dataset, testing_data=None):
+	n_epochs = 30
 	lr = 0.0001
 
 	model = GCN()
@@ -53,10 +53,29 @@ def train_gnn_network(dataset):
 		optimizer.step()
 		return loss
 
+
+	best_acc = 0
+	steps_before_test, max_n_tries = 300, 10
+	curr, n_tries = 0, 0
 	for epoch in range(n_epochs):
 		for data in dataset:
 			loss = train(data)
+			curr += 1
+			if testing_data and curr > steps_before_test:
+				acc = test_gnn_network(model, testing_data)
+				if acc > best_acc:
+					best_acc = acc
+				
+					if n_tries < max_n_tries:
+						n_tries += 1
+					else:
+						return model
+
+				curr = 0
+
 		print(f'Epoch: {epoch}, Loss: {loss}')
+
+	print(f"Best accuracy found: {best_acc:.2f}%")
 
 	return model
 
@@ -132,21 +151,30 @@ def get_amino_acid_frequency(sequence):
 def test_gnn_network(model, data):
 	criterion = torch.nn.MSELoss()
 	loss = 0
-
 	n_correct = 0
-	for item in data:
-		out = model(item.x.float(), item.edge_index)
-		pred = torch.argmax(out)
-		loss += criterion(out, item.y.unsqueeze(1).float())
-		if item.y[pred.item()].item() > 0:
-			n_correct += 1
+	n_top_5 = 0
+
+	with torch.no_grad():
+		for item in data:
+			out = model(item.x.float(), item.edge_index)
+			pred = torch.argmax(out)
+			loss += criterion(out, item.y.float())
+			if item.y[pred.item()].item() > 0:
+				n_correct += 1
+
+			actual = torch.argmax(item.y).item()
+			if torch.argsort(out.squeeze(1))[actual].item() <= 4:
+				n_top_5 += 1
+
 
 	accuracy = (n_correct/len(data))*100
+	acc_top_10 = (n_top_5/len(data))*100
 	avg_loss = loss/len(data)
-	print(f"Accuracy of: {accuracy}")
+	print(f"Accuracy of: {accuracy:.2f}%")
+	print(f"Appears in top five {acc_top_10:.2f}% of the time.")
 	print(f"Average loss of: {avg_loss}")
 
-	return accuracy, avg_loss
+	return accuracy
 
 
 ### UTILITY CLASSES ###
