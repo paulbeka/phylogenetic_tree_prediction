@@ -8,6 +8,7 @@ from torch.nn import Linear
 from torch_geometric.nn import GCNConv
 from collections import Counter
 import torch.nn.functional as F
+from sklearn.metrics import confusion_matrix, balanced_accuracy_score
 
 
 BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'D', 'H', 'K', 'Y', 'N', 'L', 'F', 'T', 'C', 'M', 'G', 'E', 'W']
@@ -17,7 +18,9 @@ class GCN(torch.nn.Module):
     def __init__(self, hidden_channels=32):
         super(GCN, self).__init__()
         self.conv1 = GCNConv(21, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, 2)
+        self.conv2 = GCNConv(hidden_channels, 10)
+        self.linear1 = Linear(10, 5)
+        self.linear2 = Linear(5, 2)
 
 
     def forward(self, x, edge_index):
@@ -25,6 +28,10 @@ class GCN(torch.nn.Module):
         x = x.relu()
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index)
+        x = x.relu()
+        x = self.linear1(x)
+        x = x.relu()
+        x = self.linear2(x)
         return x
 
 
@@ -46,23 +53,11 @@ def train_gnn_network(dataset, testing_data=None):
 
 
 	best_acc = 0
-	steps_before_test, max_n_tries = 300, 10
-	curr, n_tries = 0, 0
 	for epoch in range(n_epochs):
 		for data in dataset:
 			loss = train(data)
-			curr += 1
-			if testing_data and curr > steps_before_test:
-				acc = test_gnn_network(model, testing_data)
-				if acc > best_acc:
-					best_acc = acc
-				
-					if n_tries < max_n_tries:
-						n_tries += 1
-					else:
-						return model
-
-				curr = 0
+		if testing_data:
+			best_acc = test_gnn_network(model, testing_data, best=best_acc)
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
@@ -122,7 +117,6 @@ def load_tree(tree,
 		done.append(curr)
 		queue.remove(curr)
 
-
 	G.add_nodes_from(nodes)
 	G.add_edges_from(edges)
 	nx.set_edge_attributes(G, attrs)
@@ -141,30 +135,23 @@ def get_amino_acid_frequency(sequence):
 	return data
 
 
-def test_gnn_network(model, data):
-	n_correct = 0
-	n_incorrect = 0
+def test_gnn_network(model, data, best=None):
+	predicted_labels = []
+	true_labels = []
 
 	with torch.no_grad():
-		for item in data:
-			out = model(item.x.float(), item.edge_index)
-			preds = torch.argmax(out, axis=1)
-			y = torch.argmax(item.y, axis=1)
-			actual = torch.argmin(y).item()
+	    for item in data:
+	        out = model(item.x.float(), item.edge_index)
+	        preds = torch.argmax(out, axis=1)
+	        y = torch.argmax(item.y, axis=1)
+	        
+	        predicted_labels.extend(preds.tolist())
+	        true_labels.extend(y.tolist())
 
-			if preds[actual].item() == 0:
-				n_correct += 1
-
-			for i in range(len(list(preds))):
-				if preds[i].item() != y[i].item():
-					n_incorrect += 1
-
-	accuracy = (n_correct/len(data))*100
-	wrong = (n_incorrect/(len(data)*len(list(y))))*100
-	print(f"Percent of true labels predicted true: {accuracy:.2f}%")
-	print(f"Percent of predictions wrong in general: {wrong:.2f}%")
-
-	return accuracy
+	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
+	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
+	conf_matrix = confusion_matrix(true_labels, predicted_labels)
+	print(conf_matrix)
 
 
 ### UTILITY CLASSES ###

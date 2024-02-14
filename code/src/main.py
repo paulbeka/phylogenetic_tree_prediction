@@ -5,7 +5,7 @@ from networks.spr_likelihood_prediction_trainer import get_dataloader, train_val
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network
 from networks.node_network import train_node_network, load_node_data, test_node_network
 
-import random, dendropy, os, argparse, pickle, torch
+import random, dendropy, os, argparse, pickle, torch, copy
 from datetime import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -91,9 +91,11 @@ def generate(data_files, generate_true_ratio=True):
 
 
 def create_dataset(tree, 
-	n_items=40,  					# Number of random mutations
-	rapid=True, 					# Find best mutation at every time step
-	generate_true_ratio=True):		# Generate 1-to-1 (even dataset) or the true ratio
+		n_items=40,  					# Number of random mutations
+		rapid=True, 					# Find best mutation at every time step
+		generate_true_ratio=True 		# Generate 1-to-1 (even dataset) or the true ratio
+	):
+	
 	dataset = []
 	gnn_dataset = []
 	base_ll = []
@@ -101,43 +103,43 @@ def create_dataset(tree,
 	for i in range(n_items):
 		
 		actionSpace = tree.find_action_space()
-		
 		if rapid:
 			action = random.choice(actionSpace)
-		else:
-			best = None
-			for action in actionSpace:
-				original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+			treeProperties = get_tree_features(tree, action[0], original_point)
+
+			# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
+			# gnn_dataset += node_data
+			gnn_data = load_tree(tree, target=action[0])
+			gnn_dataset.append(gnn_data)
+
+			if WINDOWS:
+				raxml_score = 0  # raxml does not work on windows 
+			else:
 				raxml_score = float(calculate_raxml(tree)["ll"])
-				tree.perform_spr(action[0], original_point)
-				if best and best[1] < raxml_score:
-					best = (action, raxml_score)
-				else:
-					best = (action, raxml_score)
-			action = best[0]
+			
+			base_ll.append((i, raxml_score))
+
+			if not prev_ll:
+				score = abs(raxml_score)
+			else:
+				score = prev_ll - abs(raxml_score)
+
+			dataset.append((treeProperties, score))
 
 
-		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
-		treeProperties = get_tree_features(tree, action[0], original_point)
-
-		# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
-		# gnn_dataset += node_data
-		gnn_data = load_tree(tree, target=action[0])
-		gnn_dataset.append(gnn_data)
-
-		if WINDOWS:
-			raxml_score = 0  # raxml does not work on windows 
 		else:
-			raxml_score = float(calculate_raxml(tree)["ll"])
-		
-		base_ll.append((i, raxml_score))
+			ranking = []
+			for action in actionSpace:
+				treeCopy = copy.deepcopy(tree)
+				actionCopy = copy.deepcopy(action)
+				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True)
+				raxml_score = float(calculate_raxml(treeCopy)["ll"])
+				ranking.append((action, raxml_score))
 
-		if not prev_ll:
-			score = abs(raxml_score)
-		else:
-			score = prev_ll - abs(raxml_score)
+			ranking.sort(key=lambda x: x[1])
+			dataset.append((tree, ranking))
 
-		dataset.append((treeProperties, score))
 
 	return dataset, gnn_dataset, base_ll
 

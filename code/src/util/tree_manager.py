@@ -20,12 +20,27 @@ class Tree:
 
 		self.alignment = get_alignment_sequence_dict(alignment)
 		self.tree = read(f"{loc}.fasta.raxml.bestTree", format="newick")
-		self.n_nodes = len(list(self.tree.find_elements()))
-		# self.tree = tree
+
+		if len(self.tree.root.clades) > 2:
+			new_clade = Clade(branch_length=0.000001, name="bigdaddy")
+			new_clade.clades = self.tree.root.clades[:2]
+			for clade in new_clade.clades:
+				self.tree.root.clades.remove(clade)
+			self.tree.root.clades.append(new_clade)
+
+		count = 0
+		for node in [self.tree.root, *self.tree.find_elements()]:
+			if node.name == None:
+				setattr(node, "name", str(count))
+				count += 1
+		self.n_nodes = count
+
 
 	def find_action_space(self):
 		# TODO: !!! for small trees, this needs to be fixed
 		nodes = [node for node in self.tree.find_clades() if (node != self.tree.root) and (node not in self.tree.root.clades)]
+
+		count = 0
 
 		actionSpace = []
 		for node in nodes:
@@ -43,6 +58,9 @@ class Tree:
 
 	# TODO: Fix operation close to the root of the tree
 	def perform_spr(self, subtree, regraft_location, return_parent=False):
+		subtree = list(self.tree.find_elements(name=subtree.name))[0]
+		regraft_location = list(self.tree.find_elements(name=regraft_location.name))[0]
+
 		parent = get_parent(self.tree, subtree)
 
 		if parent is None:

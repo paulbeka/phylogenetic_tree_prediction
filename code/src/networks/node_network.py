@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score, accuracy_score, recall_score, balanced_accuracy_score
 
 
 BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'D', 'H', 'K', 'Y', 'N', 'L', 'F', 'T', 'C', 'M', 'G', 'E', 'W']
@@ -11,7 +13,7 @@ class NodeNetwork(nn.Module):
 	def __init__(self, batch_size=1):
 		super(NodeNetwork, self).__init__()
 		
-		self.firstLayer = nn.Linear(21, 30)
+		self.firstLayer = nn.Linear(22, 30)
 		self.secondLayer = nn.Linear(30, 10)
 		self.finalLayer = nn.Linear(10, 2)
 
@@ -27,16 +29,17 @@ class NodeNetwork(nn.Module):
 
 
 def train_node_network(dataset, testing_data=None):
-	n_epochs = 40
-	lr = 0.001
+	n_epochs = 100
+	lr = 0.0005
+	batch_size = 3
+
+	dataset = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
 	model = NodeNetwork()
-	criterion = torch.nn.BCEWithLogitsLoss()
+	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([20, 1]))
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 	best_acc = 0
-	steps_before_test, max_n_tries = 300, 10
-	curr, n_tries = 0, 0
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
@@ -45,47 +48,43 @@ def train_node_network(dataset, testing_data=None):
 			loss.backward()
 			optimizer.step()
 
-			curr += 1
-
-			if testing_data and curr > steps_before_test:
-				acc = test_node_network(model, testing_data)
-				if acc > best_acc:
-					best_acc = acc
-				
-					if n_tries < max_n_tries:
-						n_tries += 1
-					else:
-						return model
-
-				curr = 0
+		if testing_data:
+			best_acc = test_node_network(model, testing_data, best=best_acc)
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
-	print(f"Best accuracy found: {best_acc:.2f}%")
 	return model
 
 
 # todo: increase the ratio
-def test_node_network(model, data):
-	n_correct = 0
-	n_positive_correct = 0
-	n_positive = 0
-	with torch.no_grad():
-		for item in data:
-			out = model(item[0])
-			if torch.argmax(out) == torch.argmax(item[1]):  # Calculate accuracy
-				n_correct += 1
-			if torch.argmax(item[1]) == 0:
-				n_positive += 1
-				if torch.argmax(out) == torch.argmax(item[1]): # Calculate recall
-					n_positive_correct += 1
+def test_node_network(model, data, best=None):
+	predicted_labels = []
+	true_labels = []
 
-	accuracy = (n_correct/len(data))*100
-	recall = (n_positive_correct/n_positive)*100
-	print(f"Accuracy of {accuracy:.2f}%")
-	print(f"Recall of {recall:.2f}%")
-	
-	return accuracy
+	best_balanced_acc = 0
+
+	with torch.no_grad():
+	    for item in data:
+	        out = model(item[0])
+	        predicted_label = torch.argmax(out)
+	        true_label = torch.argmax(item[1])
+	        predicted_labels.append(predicted_label)
+	        true_labels.append(true_label)
+
+	accuracy = accuracy_score(true_labels, predicted_labels)*100
+	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
+	recall = recall_score(true_labels, predicted_labels)*100
+
+	if balanced_acc.item() > best:
+		best = balanced_acc.item()
+		print(f"Accuracy of {accuracy:.2f}%")
+		print(f"Recall of {recall:.2f}%")
+		print(f"Balanced accuracy: {balanced_acc:.2f}%")
+
+		conf_matrix = confusion_matrix(true_labels, predicted_labels)
+		print(conf_matrix)
+		
+	return best
 
 
 def load_node_data(tree, original_point=None, generate_true_ratio=False):
@@ -119,7 +118,7 @@ def load_node_data(tree, original_point=None, generate_true_ratio=False):
 		payload_dict[curr.name] = payload
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
-		dat = torch.tensor(list(dat.values()))
+		dat = torch.tensor([*list(dat.values()), (get_node_depth(tree.tree, curr)/10)])*10 # add the depth measure
 		if original_point == curr:
 			data = (dat, torch.Tensor([1, 0]))
 		else:
@@ -150,6 +149,7 @@ def get_amino_acid_frequency(sequence):
 		except:
 			data[acid] = 1
 	return data
+#	return {key: val/data["total"] for (key, val) in data if key != "total"}
 
 
 def combine_dicts(A, B):
@@ -162,3 +162,8 @@ def get_parent(tree, child_clade):
 		return node_path[-2]
 	except:
 		return tree.root
+
+
+def get_node_depth(tree, node):
+	node_path = tree.get_path(node)
+	return len(node_path)
