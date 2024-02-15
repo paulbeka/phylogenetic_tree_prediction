@@ -70,9 +70,10 @@ def compare_score(model, test_loader):
 			outputs = model(configs.double())
 			true_vals.append(labels[0].item())
 			pred_vals.append(outputs[0][0].item())
-
-	print(len(true_vals), len(pred_vals))
-	plt.plot(true_vals, pred_vals)
+ 
+ 	pred_vals = [x for _, x in sorted(zip(true_vals, pred_vals))]
+	plt.plot(sorted(true_vals))
+	plt.plot(pred_vals)
 	plt.show()
 
 
