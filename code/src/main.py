@@ -1,7 +1,7 @@
 from get_tree_features import get_tree_features
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_likelihood_prediction_trainer import get_dataloader, train_value_network, test_value_network, test_model_ll_increase
+from networks.spr_likelihood_prediction_trainer import get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network
 from networks.node_network import train_node_network, load_node_data, test_node_network
 
@@ -55,18 +55,17 @@ def complete(args):
 			data = pickle.load(f) 
 	else:
 		files = find_data_files(os.path.join(BASE_DIR, args.location))
-		training_data = generate(files[:16], generate_true_ratio=False)["gnn"]
-		testing_data = generate(files[16:], generate_true_ratio=True)["gnn"]
+		training_data = generate(files[:16], generate_true_ratio=False)
+		testing_data = generate(files[16:], generate_true_ratio=True)
 
-	# training_data = data["gnn"][:int(len(data["gnn"])*TRAIN_TEST_SPLIT)]
-	# testing_data = data["gnn"][int(len(data["gnn"])*TRAIN_TEST_SPLIT):]
+	training_data["spr"] = get_dataloader(training_data["spr"])
+	testing_data["spr"] = get_dataloader(testing_data["spr"])
 
-	random.shuffle(training_data)
+	spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
 
-	# training_data["spr"] = get_dataloader(training_data["spr"])
-	
-	# spr_model = train_value_network(training_data["spr"])
-	gnn_model = train_gnn_network(training_data, testing_data=training_data) #testing_data=testing_data
+	compare_score(spr_model, testing_data["spr"])
+
+	# gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
 	# node_model = train_node_network(training_data, testing_data=testing_data)
 
 	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")

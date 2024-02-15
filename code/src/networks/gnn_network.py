@@ -40,7 +40,7 @@ def train_gnn_network(dataset, testing_data=None):
 	lr = 0.0001
 
 	model = GCN()
-	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([40, 1]))
+	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([41, 1]))
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 	def train(data):
@@ -149,9 +149,13 @@ def test_gnn_network(model, data, best=None):
 	        true_labels.extend(y.tolist())
 
 	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
-	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
-	conf_matrix = confusion_matrix(true_labels, predicted_labels)
-	print(conf_matrix)
+
+	if balanced_acc.item() > best:
+		print(f"Balanced Accuracy: {balanced_acc:.2f}%")
+		conf_matrix = confusion_matrix(true_labels, predicted_labels)
+		print(conf_matrix)
+
+	return balanced_acc
 
 
 ### UTILITY CLASSES ###

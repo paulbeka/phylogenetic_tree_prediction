@@ -61,8 +61,6 @@ def test_node_network(model, data, best=None):
 	predicted_labels = []
 	true_labels = []
 
-	best_balanced_acc = 0
-
 	with torch.no_grad():
 	    for item in data:
 	        out = model(item[0])

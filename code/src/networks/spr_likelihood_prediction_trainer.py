@@ -13,7 +13,7 @@ from util.raxml_util import calculate_raxml
 from get_tree_features import get_tree_features
 
 
-def train_value_network(train_loader):
+def train_value_network(train_loader, test=None):
 
 	num_epochs = 10
 	batch_size = 1
@@ -24,6 +24,8 @@ def train_value_network(train_loader):
 	criterion = nn.MSELoss()
 	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+	best_model = (None, 9999999)
+
 	total_steps = len(train_loader)
 	for epoch in range(num_epochs):
 		print(f"Epoch: {epoch+1}/{num_epochs}")
@@ -31,20 +33,21 @@ def train_value_network(train_loader):
 
 			outputs = model(items.double())
 			loss = criterion(outputs.double(), labels.unsqueeze(1).double())
-
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
 
-		print(f"Saving epoch {epoch+1}...")
+		if test:
+			loss = test_value_network(model, test)
+			if loss < best_model[1]:
+				best_model = (model, loss)
 
-	torch.save(model.state_dict(), "output")
+		print(f"Saving epoch {epoch+1}...")
 
 	return model
 
 
 def test_value_network(model, test_loader):
-
 	criterion = nn.MSELoss()
 	with torch.no_grad():
 		test_loss = 0
@@ -53,8 +56,24 @@ def test_value_network(model, test_loader):
 
 			test_loss += criterion(outputs, labels.unsqueeze(1))
 
-
 		print(f"Total loss: {test_loss / len(test_loader)}")
+	
+	return test_loss / len(test_loader)	
+
+
+def compare_score(model, test_loader):
+	true_vals = []
+	pred_vals = []
+	with torch.no_grad():
+		test_loss = 0
+		for configs, labels in test_loader:
+			outputs = model(configs.double())
+			true_vals.append(labels[0].item())
+			pred_vals.append(outputs[0][0].item())
+
+	print(len(true_vals), len(pred_vals))
+	plt.plot(true_vals, pred_vals)
+	plt.show()
 
 
 def test_model_ll_increase(model, tree, n_iters=50):
