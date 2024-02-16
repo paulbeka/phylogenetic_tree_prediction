@@ -8,13 +8,30 @@ import matplotlib.pyplot as plt
 
 sys.path.append("..") 
 
-from .spr_likelihood_network import SprScoreFinder
 from util.raxml_util import calculate_raxml
 from get_tree_features import get_tree_features
 
 
-def train_value_network(train_loader, test=None):
+class SprScoreFinder(nn.Module):
+	def __init__(self, batch_size):
+		super(SprScoreFinder, self).__init__()
+		
+		self.firstLayer = nn.Linear(6, 20)
+		self.secondLayer = nn.Linear(20, 20)
+		self.thirdLayer = nn.Linear(20, 10)
+		self.finalLayer = nn.Linear(10, 1)
 
+		self.silu = nn.SiLU()
+
+	def forward(self, x):
+		x = self.silu(self.firstLayer(x))
+		x = self.silu(self.secondLayer(x))
+		x = self.silu(self.thirdLayer(x))
+		x = self.finalLayer(x)
+		return x
+
+
+def train_value_network(train_loader, test=None):
 	num_epochs = 10
 	batch_size = 1
 	learning_rate = 0.0001
@@ -42,9 +59,7 @@ def train_value_network(train_loader, test=None):
 			if loss < best_model[1]:
 				best_model = (model, loss)
 
-		print(f"Saving epoch {epoch+1}...")
-
-	return model
+	return best_model[0]
 
 
 def test_value_network(model, test_loader):
@@ -70,10 +85,11 @@ def compare_score(model, test_loader):
 			outputs = model(configs.double())
 			true_vals.append(labels[0].item())
 			pred_vals.append(outputs[0][0].item())
- 
- 	pred_vals = [x for _, x in sorted(zip(true_vals, pred_vals))]
-	plt.plot(sorted(true_vals))
-	plt.plot(pred_vals)
+
+	pred_vals = [x for _, x in sorted(zip(true_vals, pred_vals))]
+	plt.plot(sorted(true_vals), label="True")
+	plt.plot(pred_vals, label="Predicted")
+	plt.legend()
 	plt.show()
 
 
@@ -119,12 +135,3 @@ def get_dataloader(dataset, batch_size=1):
 	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
 	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
 	return train_loader
-
-
-def train_test_split(dataset, batch_size=1):
-	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
-	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
-	# TODO: run multiple trees and keep some for test data
-	test_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
-	return train_loader, test_loader
-	

@@ -1,7 +1,7 @@
 from get_tree_features import get_tree_features
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_likelihood_prediction_trainer import get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
+from networks.spr_network import get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network
 from networks.node_network import train_node_network, load_node_data, test_node_network
 
@@ -91,7 +91,7 @@ def generate(data_files, generate_true_ratio=True):
 
 def create_dataset(tree, 
 		n_items=40,  					# Number of random mutations
-		rapid=True, 					# Find best mutation at every time step
+		rapid=False, 					# Find best mutation at every time step
 		generate_true_ratio=True 		# Generate 1-to-1 (even dataset) or the true ratio
 	):
 	
@@ -133,11 +133,16 @@ def create_dataset(tree,
 				treeCopy = copy.deepcopy(tree)
 				actionCopy = copy.deepcopy(action)
 				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True)
-				raxml_score = float(calculate_raxml(treeCopy)["ll"])
+				# raxml_score = float(calculate_raxml(treeCopy)["ll"])
+				raxml_score = 0
 				ranking.append((action, raxml_score))
 
 			ranking.sort(key=lambda x: x[1])
-			dataset.append((tree, ranking))
+			# gnn_dataset.append((tree, ranking))
+			subtr, regraft = ranking[0][0]
+			original_point = tree.perform_spr(subtr, regraft, return_parent=True)
+			treeProperties = get_tree_features(tree, subtr, original_point)
+			dataset.append((treeProperties, ranking[0][1]))
 
 
 	return dataset, gnn_dataset, base_ll
