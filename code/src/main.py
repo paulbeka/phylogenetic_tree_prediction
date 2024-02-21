@@ -58,14 +58,14 @@ def complete(args):
 		training_data = generate(files[:16], generate_true_ratio=False)
 		testing_data = generate(files[16:], generate_true_ratio=True)
 
-	training_data["spr"] = get_dataloader(training_data["spr"])
-	testing_data["spr"] = get_dataloader(testing_data["spr"])
+	# training_data["spr"] = get_dataloader(training_data["spr"])
+	# testing_data["spr"] = get_dataloader(testing_data["spr"])
 
-	spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
+	# spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
 
-	compare_score(spr_model, testing_data["spr"])
+	# compare_score(spr_model, testing_data["spr"])
 
-	# gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
+	gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
 	# node_model = train_node_network(training_data, testing_data=testing_data)
 
 	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
@@ -82,16 +82,16 @@ def generate(data_files, generate_true_ratio=True):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
-		training_data["spr"] += dataset
-		training_data["gnn"] += gnn_dataset
+		# dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
+		# training_data["spr"] += dataset
+		training_data["gnn"] += gnn_1_move(tree)
 
 	return training_data
 
 
 def create_dataset(tree, 
 		n_items=40,  					# Number of random mutations
-		rapid=False, 					# Find best mutation at every time step
+		rapid=True, 					# Find best mutation at every time step
 		generate_true_ratio=True 		# Generate 1-to-1 (even dataset) or the true ratio
 	):
 	
@@ -109,7 +109,7 @@ def create_dataset(tree,
 
 			# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
 			# gnn_dataset += node_data
-			gnn_data = load_tree(tree, target=action[0])
+			gnn_data = load_tree(tree, target=[action[0]])
 			gnn_dataset.append(gnn_data)
 
 			if WINDOWS:
@@ -144,8 +144,28 @@ def create_dataset(tree,
 			treeProperties = get_tree_features(tree, subtr, original_point)
 			dataset.append((treeProperties, ranking[0][1]))
 
-
 	return dataset, gnn_dataset, base_ll
+
+
+def gnn_1_move(tree):
+	actionSpace = tree.find_action_space()
+	random.shuffle(actionSpace)
+	already_done = set()
+	p = []
+	for action in actionSpace:
+		if not ((action[0] in already_done) or (action[1] in already_done)):
+			p.append(action)
+			already_done.add(action[0])
+			already_done.add(action[1])
+	actionSpace = p
+
+	gnn_dataset = []
+	targets = []
+	for action in actionSpace[:int(len(actionSpace)/4)]:
+		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+		targets.append(original_point)
+	gnn_dataset.append(load_tree(tree, target=targets))
+	return gnn_dataset
 
 
 def find_data_files(path):

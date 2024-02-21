@@ -22,7 +22,7 @@ def get_tree_features(tree, subtree, regrft_loc):
 		"regrft_branch_tot": regrft_branch_tot,
 		"branch_dist": branch_dist,
 		"subtree_centrality": subtree_centrality,
-		"regrft_centrality": regrft_centrality
+		"regrft_centrality": regrft_centrality,
 	}
 
 	return features

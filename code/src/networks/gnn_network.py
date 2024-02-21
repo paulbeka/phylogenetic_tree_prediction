@@ -36,7 +36,10 @@ class GCN(torch.nn.Module):
 
 
 def train_gnn_network(dataset, testing_data=None):
-	n_epochs = 3000
+	if len(dataset) < 1:
+		raise Exception("No training data!")
+		
+	n_epochs = 200
 	lr = 0.0001
 
 	model = GCN()
@@ -52,18 +55,20 @@ def train_gnn_network(dataset, testing_data=None):
 		return loss
 
 
-	best_acc = 0
+	best_acc = (None, 0)
 	for epoch in range(n_epochs):
 		for data in dataset:
 			loss = train(data)
 		if testing_data:
-			best_acc = test_gnn_network(model, testing_data, best=best_acc)
+			acc = test_gnn_network(model, testing_data, best=best_acc[1])
+			if best_acc[1] < acc.item():
+				best_acc = (model, acc) 
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
-	print(f"Best accuracy found: {best_acc:.2f}%")
+	print(f"Best accuracy found: {best_acc[1]:.2f}%")
 
-	return model
+	return best_acc[0]
 
 
 # TODO: OPTIMIZE THIS CODE 
@@ -109,7 +114,7 @@ def load_tree(tree,
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
-		if target == curr:
+		if curr in target:
 			nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
 		else:
 			nodes.append((curr, {"x": dat, "y": torch.Tensor([0, 1])}))
