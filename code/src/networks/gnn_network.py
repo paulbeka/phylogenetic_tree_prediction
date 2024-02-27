@@ -38,7 +38,7 @@ class GCN(torch.nn.Module):
 def train_gnn_network(dataset, testing_data=None):
 	if len(dataset) < 1:
 		raise Exception("No training data!")
-		
+
 	n_epochs = 200
 	lr = 0.0001
 
@@ -114,10 +114,13 @@ def load_tree(tree,
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor(list(dat.values()))
-		if curr in target:
-			nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
-		else:
-			nodes.append((curr, {"x": dat, "y": torch.Tensor([0, 1])}))
+		if target != None:	# In which case, we are training
+			if curr in target:
+				nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
+			else:
+				nodes.append((curr, {"x": dat, "y": torch.Tensor([0, 1])}))
+		else: # Using the network to predict the node of a tree
+			nodes.append((curr, {"x": dat, "node": curr.name}))
 
 		done.append(curr)
 		queue.remove(curr)

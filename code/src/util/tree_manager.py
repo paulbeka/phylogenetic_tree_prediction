@@ -36,22 +36,31 @@ class Tree:
 		self.n_nodes = count
 
 
-	def find_action_space(self):
+	def find_action_space(self, rootNode=None):
 		# TODO: !!! for small trees, this needs to be fixed
 		nodes = [node for node in self.tree.find_clades() if (node != self.tree.root) and (node not in self.tree.root.clades)]
-
-		count = 0
-
 		actionSpace = []
-		for node in nodes:
+
+		if rootNode:
 			for item in nodes:
-				if node == item:
-					break
+				if rootNode == item:
+					continue
+				if (rootNode in item.clades) or (item in rootNode.clades):
+					continue
 
-				if (node in item.clades) or (item in node.clades):
-					break
+				actionSpace.append((rootNode, item))
 
-				actionSpace.append((node, item))
+
+		else:
+			for node in nodes:
+				for item in nodes:
+					if node == item:
+						continue
+
+					if (node in item.clades) or (item in node.clades):
+						continue
+
+					actionSpace.append((node, item))
 
 		return actionSpace
 

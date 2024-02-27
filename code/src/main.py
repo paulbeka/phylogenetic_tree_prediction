@@ -1,14 +1,16 @@
 from get_tree_features import get_tree_features
+from algorithm import run_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_network import get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
-from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network
+from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN
 from networks.node_network import train_node_network, load_node_data, test_node_network
 
 import random, dendropy, os, argparse, pickle, torch, copy
 from datetime import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import traceback
 
 
 TRAIN_TEST_SPLIT = 0.8
@@ -58,19 +60,34 @@ def complete(args):
 		training_data = generate(files[:16], generate_true_ratio=False)
 		testing_data = generate(files[16:], generate_true_ratio=True)
 
-	# training_data["spr"] = get_dataloader(training_data["spr"])
-	# testing_data["spr"] = get_dataloader(testing_data["spr"])
+	training_data["spr"] = get_dataloader(training_data["spr"])
+	testing_data["spr"] = get_dataloader(testing_data["spr"])
 
-	# spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
+	spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
 
 	# compare_score(spr_model, testing_data["spr"])
 
 	gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
 	# node_model = train_node_network(training_data, testing_data=testing_data)
 
-	# torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
-	# torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
+	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr")
+	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn")
 
+
+def algorithm(args):
+	spr_model = SprScoreFinder(1)
+	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
+	spr_model.eval()
+
+	gnn_model = GCN()
+	gnn_model.load_state_dict(torch.load(f"{args.networks_location}/gnn"))
+	gnn_model.eval()
+
+	try:
+		tree = Tree(args.location)
+		run_algorithm(tree, spr_model, gnn_model, 50)
+	except Exception as e:
+		traceback.print_exc()
 
 #################### NON COMMAND EXECUTABLES ####################
 
@@ -82,8 +99,8 @@ def generate(data_files, generate_true_ratio=True):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		# dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
-		# training_data["spr"] += dataset
+		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
+		training_data["spr"] += dataset
 		training_data["gnn"] += gnn_1_move(tree)
 
 	return training_data
@@ -183,13 +200,15 @@ if __name__ == "__main__":
 		description="This is the Neural Network phylogenetic tree creator.")
 	parser.add_argument("-m", "--mode", required=True,
 		help="The mode to be used when using the app. Train for training network (and you already have data), test for testing, and complete to do both.",
-		choices=["data_generation", "train", "test", "complete"])
+		choices=["data_generation", "train", "test", "complete", "algorithm"])
 	parser.add_argument("-l", "--location", required=True,
 		help="Location for the input data (raw tree files to train)")
 	parser.add_argument("-o", "--output_dest",
 		help="Where the output for the data should be stored.")
 	parser.add_argument("-w", "--windows", action="store_true",
 		help="If windows is being used, this flag should be true.")
+	parser.add_argument("-n", "--networks_location",
+		help="Give the location of the stored NNs if algorithm is being run")
 	args = parser.parse_args()
 
 	WINDOWS = args.windows
