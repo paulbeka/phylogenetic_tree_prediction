@@ -2,7 +2,7 @@ from get_tree_features import get_tree_features
 from algorithm import run_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score
+from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN
 from networks.node_network import train_node_network, load_node_data, test_node_network
 
@@ -42,13 +42,6 @@ def train(args):
 
 	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
 	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
-
-
-def test(args, data=None, models=None):
-	if data:
-		return test_gnn_network(models[1], data)
-	else:
-		gnn = torch.load(args.location)
 		
 
 def complete(args):
@@ -89,9 +82,31 @@ def algorithm(args):
 	except Exception as e:
 		traceback.print_exc()
 
+
+
+def test(args, data=None, models=None):
+	if data:
+		return test_gnn_network(models[1], data)
+	else:
+		gnn = torch.load(args.location)#
+
+	# need to calculate the actual score at every iteration, similar to data data_generation
+	# then find the top 10 at each and see if the gnn or spr network can detect it 
+	# calculate the maximum likelihood reached by algorithm, and the path
+	# 	-> need a way to caclaulte the true ll for every move
+	# calculate time taken, pretty simple. Try for multiple datasets.
+	
+	n_items_random_walk = 40
+
+	files = find_data_files(os.path.join(BASE_DIR, args.location))
+	testing_dataset = generate(files, n_items_random_walk=n_items_random_walk)
+	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * n] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+	print(len(spr_testing_dataset))
+	test_top_10(spr_testing_dataset)
+
 #################### NON COMMAND EXECUTABLES ####################
 
-def generate(data_files, generate_true_ratio=True):
+def generate(data_files, generate_true_ratio=True, n_items_random_walk=40):
 	training_data = {
 		"spr": [],
 		"gnn": []
@@ -99,7 +114,7 @@ def generate(data_files, generate_true_ratio=True):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio)
+		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio, n_items_random_walk=n_items_random_walk)
 		training_data["spr"] += dataset
 		training_data["gnn"] += gnn_1_move(tree)
 

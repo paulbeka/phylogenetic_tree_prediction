@@ -11,6 +11,7 @@ def train_algorithm(tree, n_iters):
 
 
 def run_algorithm(tree, spr_model, gnn_model, n_iters):
+	ll_path = []
 	for i in range(n_iters):
 		tree_gnn_data = load_tree(tree)
 		_, top = torch.topk(gnn_model(tree_gnn_data.x, tree_gnn_data.edge_index)[:, 0], N_TOP)
@@ -30,8 +31,10 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters):
 			else:
 				best_move = (candidate, score)
 
-		tree.perform_spr(candidate[0], candidate[1])
+		tree.perform_spr(best_move[0][0], best_move[0][1])
+		ll_path.append(best_move[1].item())
 
+	print(ll_path)
 	return tree
 
 

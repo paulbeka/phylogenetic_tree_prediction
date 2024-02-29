@@ -113,7 +113,9 @@ def load_tree(tree,
 		payload_dict[curr.name] = payload
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
-		dat = torch.tensor(list(dat.values()))
+		d = list(dat.values())
+		d.append(get_node_depth(tree.tree, curr)/10)
+		dat = torch.tensor()
 		if target != None:	# In which case, we are training
 			if curr in target:
 				nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
@@ -185,3 +187,8 @@ def get_parent(tree, child_clade):
 		return node_path[-2]
 	except:
 		return tree.root
+
+
+def get_node_depth(tree, node):
+	node_path = tree.get_path(node)
+	return len(node_path)

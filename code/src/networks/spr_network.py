@@ -76,6 +76,14 @@ def test_value_network(model, test_loader):
 	return test_loss / len(test_loader)	
 
 
+def test_top_10(model, test_loader):
+	n_top_10 = 0
+	with torch.no_grad():
+
+
+	return (n_top_10 / len(test_loader))*100
+
+
 def compare_score(model, test_loader):
 	true_vals = []
 	pred_vals = []
