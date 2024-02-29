@@ -115,7 +115,7 @@ def load_tree(tree,
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		d = list(dat.values())
 		d.append(get_node_depth(tree.tree, curr)/10)
-		dat = torch.tensor()
+		dat = torch.tensor(d)
 		if target != None:	# In which case, we are training
 			if curr in target:
 				nodes.append((curr, {"x": dat, "y": torch.Tensor([1, 0])}))
@@ -132,6 +132,15 @@ def load_tree(tree,
 	nx.set_edge_attributes(G, attrs)
 
 	return from_networkx(G)
+
+
+def test_top_10(model, test_dataset):
+	n_top_10 = 0
+
+	with torch.no_grad():
+		for group in test_dataset:
+			pass
+
 
 
 def get_amino_acid_frequency(sequence):

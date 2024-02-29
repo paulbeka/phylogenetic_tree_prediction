@@ -68,13 +68,7 @@ def complete(args):
 
 
 def algorithm(args):
-	spr_model = SprScoreFinder(1)
-	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
-	spr_model.eval()
-
-	gnn_model = GCN()
-	gnn_model.load_state_dict(torch.load(f"{args.networks_location}/gnn"))
-	gnn_model.eval()
+	
 
 	try:
 		tree = Tree(args.location)
@@ -85,10 +79,7 @@ def algorithm(args):
 
 
 def test(args, data=None, models=None):
-	if data:
-		return test_gnn_network(models[1], data)
-	else:
-		gnn = torch.load(args.location)#
+	spr_model, gnn_model = load_models(args)
 
 	# need to calculate the actual score at every iteration, similar to data data_generation
 	# then find the top 10 at each and see if the gnn or spr network can detect it 
@@ -97,14 +88,26 @@ def test(args, data=None, models=None):
 	# calculate time taken, pretty simple. Try for multiple datasets.
 	
 	n_items_random_walk = 40
-
 	files = find_data_files(os.path.join(BASE_DIR, args.location))
 	testing_dataset = generate(files, n_items_random_walk=n_items_random_walk)
 	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * n] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	print(len(spr_testing_dataset))
-	test_top_10(spr_testing_dataset)
+	print(spr_testing_dataset)
+	test_top_10(spr_model, spr_testing_dataset)
 
 #################### NON COMMAND EXECUTABLES ####################
+
+def load_models(args):
+	spr_model = SprScoreFinder(1)
+	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
+	spr_model.eval()
+
+	gnn_model = GCN()
+	gnn_model.load_state_dict(torch.load(f"{args.networks_location}/gnn"))
+	gnn_model.eval()
+
+	return spr_model, gnn_model
+
 
 def generate(data_files, generate_true_ratio=True, n_items_random_walk=40):
 	training_data = {
@@ -114,7 +117,7 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40):
 
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio, n_items_random_walk=n_items_random_walk)
+		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio, n_items=n_items_random_walk)
 		training_data["spr"] += dataset
 		training_data["gnn"] += gnn_1_move(tree)
 
@@ -132,7 +135,6 @@ def create_dataset(tree,
 	base_ll = []
 	prev_ll = None
 	for i in range(n_items):
-		
 		actionSpace = tree.find_action_space()
 		if rapid:
 			action = random.choice(actionSpace)
