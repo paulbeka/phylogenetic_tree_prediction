@@ -76,23 +76,24 @@ def test_value_network(model, test_loader):
 	return test_loss / len(test_loader)	
 
 
+# Badly made, so the dataset is not in Torch form (so its done manually, could cause confusion)
 def test_top_10(model, test_dataset):
 	n_top_10 = 0
-	
+
 	with torch.no_grad():
 		for group in test_dataset:
-			group.sort(key: lambda x: x[1])
+			group.sort(key=lambda x: x[1])
 			preds = []
 			max_pred = None
 			for item in group:
-				x = model(item[0]).item()
+				x = model(torch.Tensor(list(item[0].values()))).item()
 				if max_pred == None or max_pred[1] < x:
 					max_pred = (item[0], x)
 
 			if max_pred in [item[0] for item in group[-10:]]:
 				n_top_10 += 1
 
-	return (n_top_10 / len(test_loader))*100
+	return (n_top_10 / len(test_dataset))*100
 
 
 def compare_score(model, test_loader):

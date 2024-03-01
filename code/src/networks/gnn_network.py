@@ -17,7 +17,7 @@ BASE_SEQUENCES = ['A', 'R', 'I', 'V', 'P', 'S', '-', 'Q', 'D', 'H', 'K', 'Y', 'N
 class GCN(torch.nn.Module):
     def __init__(self, hidden_channels=32):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(21, hidden_channels)
+        self.conv1 = GCNConv(22, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, 10)
         self.linear1 = Linear(10, 5)
         self.linear2 = Linear(5, 2)
@@ -39,7 +39,7 @@ def train_gnn_network(dataset, testing_data=None):
 	if len(dataset) < 1:
 		raise Exception("No training data!")
 
-	n_epochs = 200
+	n_epochs = 10
 	lr = 0.0001
 
 	model = GCN()
@@ -134,13 +134,19 @@ def load_tree(tree,
 	return from_networkx(G)
 
 
-def test_top_10(model, test_dataset):
+def gnn_test_top_10(model, test_dataset):
 	n_top_10 = 0
 
 	with torch.no_grad():
-		for group in test_dataset:
-			pass
+		for item in test_dataset:
+			_, top = torch.topk(model(item.x, item.edge_index)[:, 0], 10)
+			_, true_top = torch.topk(item.y[:, 0], 10)
+			true_top = list(true_top)
+			for pred in list(top):
+				if pred in true_top:
+					n_top_10 += 1
 
+	return n_top_10 / (len(test_dataset)*10)
 
 
 def get_amino_acid_frequency(sequence):
@@ -169,12 +175,24 @@ def test_gnn_network(model, data, best=None):
 
 	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
 
-	if balanced_acc.item() > best:
-		print(f"Balanced Accuracy: {balanced_acc:.2f}%")
-		conf_matrix = confusion_matrix(true_labels, predicted_labels)
-		print(conf_matrix)
+	# if balanced_acc.item() > best:
+	# 	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
+	# 	conf_matrix = confusion_matrix(true_labels, predicted_labels)
+	# 	print(conf_matrix)
 
 	return balanced_acc
+	
+
+def cv_validation_gnn(dataset):
+	acc = []
+	for i in range(5):
+		train = dataset[:int((i*0.2)*len(dataset))] + dataset[int(((i*0.2)+0.2)*len(dataset)):]
+		test = dataset[int((i*0.2)*len(dataset)):int(((i*0.2)+0.2)*len(dataset))]
+
+		model = train_gnn_network(train, testing_data=test)
+		acc.append(test_gnn_network(model, test))
+
+	return acc
 
 
 ### UTILITY CLASSES ###

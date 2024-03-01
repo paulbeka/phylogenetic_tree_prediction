@@ -36,30 +36,21 @@ class Tree:
 		self.n_nodes = count
 
 
-	def find_action_space(self, rootNode=None):
-		# TODO: !!! for small trees, this needs to be fixed
+	def find_action_space(self, rootNode=None):	# rootNode allows search on a singular node (waste less time)
 		nodes = [node for node in self.tree.find_clades() if (node != self.tree.root) and (node not in self.tree.root.clades)]
 		actionSpace = []
 
 		if rootNode:
 			for item in nodes:
-				if rootNode == item:
-					continue
-				if (rootNode in item.clades) or (item in rootNode.clades):
-					continue
-
+				if (rootNode == item) or (rootNode in item.clades) or (item in rootNode.clades):
+					break
 				actionSpace.append((rootNode, item))
-
 
 		else:
 			for node in nodes:
 				for item in nodes:
-					if node == item:
-						continue
-
-					if (node in item.clades) or (item in node.clades):
-						continue
-
+					if (node == item) or (node in item.clades) or (item in node.clades):
+						break
 					actionSpace.append((node, item))
 
 		return actionSpace
@@ -67,8 +58,9 @@ class Tree:
 
 	# TODO: Fix operation close to the root of the tree
 	def perform_spr(self, subtree, regraft_location, return_parent=False):
-		subtree = list(self.tree.find_elements(name=subtree.name))[0]
-		regraft_location = list(self.tree.find_elements(name=regraft_location.name))[0]
+		# subtree = list(self.tree.find_elements(name=subtree.name))[0]
+		# regraft_location = list(self.tree.find_elements(name=regraft_location.name))[0]
+
 
 		parent = get_parent(self.tree, subtree)
 
@@ -116,10 +108,10 @@ def get_tree(loc):
 
 
 def get_parent(tree, child_clade):
-	node_path = tree.get_path(child_clade)
+	node_path = tree.get_path(name=child_clade.name)
 	try:
 		return node_path[-2]
-	except:
+	except Exception as e:
 		return tree.root
 
 

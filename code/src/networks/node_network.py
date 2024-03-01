@@ -29,7 +29,7 @@ class NodeNetwork(nn.Module):
 
 
 def train_node_network(dataset, testing_data=None):
-	n_epochs = 100
+	n_epochs = 10
 	lr = 0.0005
 	batch_size = 3
 
@@ -39,7 +39,7 @@ def train_node_network(dataset, testing_data=None):
 	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([20, 1]))
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-	best_acc = 0
+	best_acc = (None, 0)
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
@@ -48,16 +48,18 @@ def train_node_network(dataset, testing_data=None):
 			loss.backward()
 			optimizer.step()
 
-		if testing_data:
-			best_acc = test_node_network(model, testing_data, best=best_acc)
+		if testing_data:	# Return output depends on testing_data not being None
+			balanced_acc = test_node_network(model, testing_data)
+			if balanced_acc > best_acc[1]:
+				best_acc = (model, balanced_acc)	# MAY NEED TO COPY THE MODEL
+				print(f"Balanced accuracy: {balanced_acc:.2f}%")
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
-	return model
+	return best_acc[0]
 
 
-# todo: increase the ratio
-def test_node_network(model, data, best=None):
+def test_node_network(model, data):
 	predicted_labels = []
 	true_labels = []
 
@@ -69,20 +71,10 @@ def test_node_network(model, data, best=None):
 	        predicted_labels.append(predicted_label)
 	        true_labels.append(true_label)
 
-	accuracy = accuracy_score(true_labels, predicted_labels)*100
 	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
-	recall = recall_score(true_labels, predicted_labels)*100
-
-	if balanced_acc.item() > best:
-		best = balanced_acc.item()
-		print(f"Accuracy of {accuracy:.2f}%")
-		print(f"Recall of {recall:.2f}%")
-		print(f"Balanced accuracy: {balanced_acc:.2f}%")
-
-		conf_matrix = confusion_matrix(true_labels, predicted_labels)
-		print(conf_matrix)
+	# print(confusion_matrix(true_labels, predicted_labels))
 		
-	return best
+	return balanced_acc
 
 
 def load_node_data(tree, original_point=None, generate_true_ratio=False):
@@ -135,6 +127,18 @@ def load_node_data(tree, original_point=None, generate_true_ratio=False):
 		data = [(selected, torch.Tensor([0, 1])), data]
 
 	return data
+
+
+def cv_validation_node(dataset):
+	acc = []
+	for i in range(5):
+		train = dataset[:int((i*0.2)*len(dataset))] + dataset[int(((i*0.2)+0.2)*len(dataset)):]
+		test = dataset[int((i*0.2)*len(dataset)):int(((i*0.2)+0.2)*len(dataset))]
+
+		model = train_node_network(train, testing_data=test)
+		acc.append(test_node_network(model, test))
+
+	return acc
 
 
 ### UTILITY ###

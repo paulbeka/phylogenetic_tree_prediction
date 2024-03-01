@@ -3,8 +3,8 @@ from algorithm import run_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10
-from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN
-from networks.node_network import train_node_network, load_node_data, test_node_network
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn
+from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node
 
 import random, dendropy, os, argparse, pickle, torch, copy
 from datetime import datetime
@@ -21,6 +21,7 @@ WINDOWS = False
 def data_generation(args, returnData=False):
 	data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 
+	# MAKE SURE IT CAN GENERATE GNN, NODE, AND SPR DATASETS B4 BIG PROCESSING
 	training_data = generate(data_files)
 
 	if returnData:
@@ -44,7 +45,7 @@ def train(args):
 	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
 		
 
-def complete(args):
+def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	if "dataset" in args:
 		with open(args.dataset, "r") as f:
 			data = pickle.load(f) 
@@ -68,14 +69,14 @@ def complete(args):
 
 
 def algorithm(args):
-	
-
+	n_iter = 50
 	try:
+		t0 = time.time()
 		tree = Tree(args.location)
-		run_algorithm(tree, spr_model, gnn_model, 50)
+		run_algorithm(tree, spr_model, gnn_model, n_iter)
+		print(f"Time taken to run {n_iter} iterations: {time.time()-t0}")
 	except Exception as e:
 		traceback.print_exc()
-
 
 
 def test(args, data=None, models=None):
@@ -86,14 +87,30 @@ def test(args, data=None, models=None):
 	# calculate the maximum likelihood reached by algorithm, and the path
 	# 	-> need a way to caclaulte the true ll for every move
 	# calculate time taken, pretty simple. Try for multiple datasets.
+
+	if args.data:
+		pass # Open the file with the large datasets here
+	else:
+		n_items_random_walk = 40
+		files = find_data_files(os.path.join(BASE_DIR, args.location))
+		testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True)
+		spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	
-	n_items_random_walk = 40
-	files = find_data_files(os.path.join(BASE_DIR, args.location))
-	testing_dataset = generate(files, n_items_random_walk=n_items_random_walk)
-	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * n] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
-	print(len(spr_testing_dataset))
-	print(spr_testing_dataset)
-	test_top_10(spr_model, spr_testing_dataset)
+	spr_top_10 = test_top_10(spr_model, spr_testing_dataset)
+	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
+
+	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
+	print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
+
+	acc_gnn = cv_validation_gnn(testing_data["gnn"])
+	acc_node = cv_validation_node(testing_data["node"])
+
+	print(f"GNN accuracy 5-fold CV: {acc_gnn}")
+	print(f"Node accuracy 5-fold CV: {acc_node}")
+
+	# plot error bars for the gnn and node networks
+	
+
 
 #################### NON COMMAND EXECUTABLES ####################
 
@@ -109,17 +126,23 @@ def load_models(args):
 	return spr_model, gnn_model
 
 
-def generate(data_files, generate_true_ratio=True, n_items_random_walk=40):
+# TODO: add option for gnn 1 move or regular
+def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, generate_node=False):
 	training_data = {
 		"spr": [],
-		"gnn": []
+		"gnn": [],
+		"node":[],
 	}
-
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
-		dataset, gnn_dataset, base_ll = create_dataset(tree, generate_true_ratio=generate_true_ratio, n_items=n_items_random_walk)
+		dataset, gnn_dataset, node_dataset, base_ll = create_dataset(tree, 
+			generate_true_ratio=generate_true_ratio, 
+			n_items=n_items_random_walk,
+		 	generate_node=generate_node)
 		training_data["spr"] += dataset
-		training_data["gnn"] += gnn_1_move(tree)
+		training_data["gnn"] += gnn_dataset
+		training_data["node"] += node_dataset
+		# training_data["gnn"] += gnn_1_move(tree) 	# Implement this later (?)
 
 	return training_data
 
@@ -127,22 +150,27 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40):
 def create_dataset(tree, 
 		n_items=40,  					# Number of random mutations
 		rapid=True, 					# Find best mutation at every time step
-		generate_true_ratio=True 		# Generate 1-to-1 (even dataset) or the true ratio
+		generate_true_ratio=True, 		# Generate 1-to-1 (even dataset) or the true ratio
+		generate_node=False,			# Generate data for node network
 	):
 	
 	dataset = []
 	gnn_dataset = []
+	node_dataset = []
 	base_ll = []
 	prev_ll = None
 	for i in range(n_items):
 		actionSpace = tree.find_action_space()
 		if rapid:
 			action = random.choice(actionSpace)
+			# SPR ACTION IS BROKEN SOMEHOW !!!!!
 			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 			treeProperties = get_tree_features(tree, action[0], original_point)
 
-			# node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
-			# gnn_dataset += node_data
+			if generate_node:
+				node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
+				node_dataset += node_data
+
 			gnn_data = load_tree(tree, target=[action[0]])
 			gnn_dataset.append(gnn_data)
 
@@ -161,7 +189,7 @@ def create_dataset(tree,
 			dataset.append((treeProperties, score))
 
 
-		else:
+		else:	# NOTE: NO NODE DATASET IN NON-RAPID MODE. TODO: INTEGRATE THIS 
 			ranking = []
 			for action in actionSpace:
 				treeCopy = copy.deepcopy(tree)
@@ -178,7 +206,7 @@ def create_dataset(tree,
 			treeProperties = get_tree_features(tree, subtr, original_point)
 			dataset.append((treeProperties, ranking[0][1]))
 
-	return dataset, gnn_dataset, base_ll
+	return dataset, gnn_dataset, node_dataset, base_ll
 
 
 def gnn_1_move(tree):
@@ -226,6 +254,8 @@ if __name__ == "__main__":
 		help="If windows is being used, this flag should be true.")
 	parser.add_argument("-n", "--networks_location",
 		help="Give the location of the stored NNs if algorithm is being run")
+	parser.add_argument("-d", "--data",
+		help="The location of the bulk data to test/train neural networks")
 	args = parser.parse_args()
 
 	WINDOWS = args.windows
