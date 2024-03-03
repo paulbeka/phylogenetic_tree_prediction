@@ -61,7 +61,8 @@ def train_gnn_network(dataset, testing_data=None):
 			loss = train(data)
 		if testing_data:
 			acc = test_gnn_network(model, testing_data, best=best_acc[1])
-			if best_acc[1] < acc.item():
+			if best_acc[1] < acc:
+			# 	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
 				best_acc = (model, acc) 
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
@@ -173,10 +174,8 @@ def test_gnn_network(model, data, best=None):
 	        predicted_labels.extend(preds.tolist())
 	        true_labels.extend(y.tolist())
 
-	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
+	balanced_acc = (balanced_accuracy_score(true_labels, predicted_labels).item())*100
 
-	# if balanced_acc.item() > best:
-	# 	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
 	# 	conf_matrix = confusion_matrix(true_labels, predicted_labels)
 	# 	print(conf_matrix)
 

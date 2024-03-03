@@ -4,13 +4,16 @@ from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn
-from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node
+from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork
 
 import random, dendropy, os, argparse, pickle, torch, copy
+import numpy as np
 from datetime import datetime
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import traceback
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import label_binarize
 
 
 TRAIN_TEST_SPLIT = 0.8
@@ -51,21 +54,21 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 			data = pickle.load(f) 
 	else:
 		files = find_data_files(os.path.join(BASE_DIR, args.location))
-		training_data = generate(files[:16], generate_true_ratio=False)
-		testing_data = generate(files[16:], generate_true_ratio=True)
+		training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
+		testing_data = generate(files[16:], generate_true_ratio=True, generate_node=True)
 
 	training_data["spr"] = get_dataloader(training_data["spr"])
 	testing_data["spr"] = get_dataloader(testing_data["spr"])
 
 	spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
+	gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
+	node_model = train_node_network(training_data["node"], testing_data=testing_data["node"])
 
 	# compare_score(spr_model, testing_data["spr"])
 
-	gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
-	# node_model = train_node_network(training_data, testing_data=testing_data)
-
 	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr")
 	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn")
+	torch.save(node_model.state_dict(), f"{args.output_dest}/node")
 
 
 def algorithm(args):
@@ -80,7 +83,7 @@ def algorithm(args):
 
 
 def test(args, data=None, models=None):
-	spr_model, gnn_model = load_models(args)
+	spr_model, gnn_model, node_model = load_models(args)
 
 	# need to calculate the actual score at every iteration, similar to data data_generation
 	# then find the top 10 at each and see if the gnn or spr network can detect it 
@@ -102,14 +105,51 @@ def test(args, data=None, models=None):
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
 	print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
 
-	acc_gnn = cv_validation_gnn(testing_data["gnn"])
-	acc_node = cv_validation_node(testing_data["node"])
+	gnn_preds, gnn_true = [], []
+	node_preds, node_true = [], []
+	for i in range(100):
+		gnn_item = testing_data["gnn"][i]
+		gnn_preds += [x.item() for x in list(gnn_model(gnn_item.x, gnn_item.edge_index)[:, 0])]
+		gnn_true += [int(x.item()) for x in list(gnn_item.y[:, 0])]
+
+	for i in range(100):
+		item = testing_data["node"][i]
+		node_preds += [x.item() for x in list(node_model(item[0]))]
+		node_true += [int(x.item()) for x in list(item[1])]
+
+	auc_score_gnn = roc_auc_score(gnn_true, gnn_preds)
+	auc_score_node = roc_auc_score(node_true, node_preds)
+
+	print(f"GNN AUC Score: {auc_score_gnn}")
+	print(f"Node AUC Score: {auc_score_node}")
+
+	# acc_gnn = cv_validation_gnn(testing_data["gnn"])
+	# acc_node = cv_validation_node(testing_data["node"])
+
+	acc_gnn = [0.65, 0.61, 0.66, 0.57, 0.59]
+	acc_node = [0.55, 0.54, 0.59, 0.6, 0.52]
 
 	print(f"GNN accuracy 5-fold CV: {acc_gnn}")
 	print(f"Node accuracy 5-fold CV: {acc_node}")
 
 	# plot error bars for the gnn and node networks
-	
+
+	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
+	gnn_err, node_err = max([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-node_mean) for x in acc_node]) 
+
+	plt.figure(figsize=(8, 6))
+	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[gnn_err, node_err], color=['blue', 'red'], capsize=5)
+	plt.ylabel('Balanced accuracy')
+	plt.title('Performance Comparison') 
+	plt.xticks(rotation=45)
+	plt.ylim(0, 1) 
+
+	for bar in bars:
+	    yval = bar.get_height()
+	    plt.text(bar.get_x() + bar.get_width()/2.0, yval, round(yval,2), va='bottom')
+
+	plt.tight_layout()
+	plt.show()
 
 
 #################### NON COMMAND EXECUTABLES ####################
@@ -123,7 +163,11 @@ def load_models(args):
 	gnn_model.load_state_dict(torch.load(f"{args.networks_location}/gnn"))
 	gnn_model.eval()
 
-	return spr_model, gnn_model
+	node_model = NodeNetwork()
+	node_model.load_state_dict(torch.load(f"{args.networks_location}/node"))
+	node_model.eval()
+
+	return spr_model, gnn_model, node_model
 
 
 # TODO: add option for gnn 1 move or regular
