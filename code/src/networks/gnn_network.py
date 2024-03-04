@@ -35,12 +35,11 @@ class GCN(torch.nn.Module):
         return x
 
 
-def train_gnn_network(dataset, testing_data=None):
+def train_gnn_network(dataset, testing_data=None,
+	n_epochs=10, lr=0.0001):
+
 	if len(dataset) < 1:
 		raise Exception("No training data!")
-
-	n_epochs = 10
-	lr = 0.0001
 
 	model = GCN()
 	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([41, 1]))
@@ -192,6 +191,27 @@ def cv_validation_gnn(dataset):
 		acc.append(test_gnn_network(model, test))
 
 	return acc
+
+
+def optimize_gnn_network(train, test):
+	epoch_values = [10, 20]
+	lr_values = [0.0005, 0.001, 0.0001]
+
+	combinations_list = []
+	for epoch in epoch_values:
+		for lr in lr_values:
+			print(f"Training with: Epochs: {epoch}, LR: {lr}")
+			model = train_gnn_network(train, testing_data=test,
+				n_epochs=epoch, lr=lr)
+			acc = test_gnn_network(model, test)
+			print(f"Accuracy found: {acc}")
+
+			combinations_list.append((lr, epoch, model.state_dict(), acc))
+
+	combinations_list.sort(key=lambda x: x[-1])
+	best = combinations_list[-1]
+	print(f"The best model found had: LR: {best[0]}, epochs: {best[1]}")
+	return best[-2]
 
 
 ### UTILITY CLASSES ###

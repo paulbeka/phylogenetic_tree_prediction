@@ -28,10 +28,8 @@ class NodeNetwork(nn.Module):
 		return x
 
 
-def train_node_network(dataset, testing_data=None):
-	n_epochs = 10
-	lr = 0.0005
-	batch_size = 3
+def train_node_network(dataset, testing_data=None,
+	n_epochs=10, batch_size=3, lr=0.0005):
 
 	dataset = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
@@ -39,7 +37,7 @@ def train_node_network(dataset, testing_data=None):
 	criterion = torch.nn.BCEWithLogitsLoss(weight=torch.Tensor([20, 1]))
 	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-	best_acc = (None, 0)
+	best_acc = (model, 0)
 	for epoch in range(n_epochs):
 		for data in dataset:
 			optimizer.zero_grad()
@@ -57,6 +55,29 @@ def train_node_network(dataset, testing_data=None):
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
 	return best_acc[0]
+
+
+def optimize_node_network(train, test):
+	epoch_values = [30]
+	lr_values = [0.0005, 0.0007, 0.0003]
+	batch_values = [1, 20, 50]
+
+	combinations_list = []
+	for epoch in epoch_values:
+		for lr in lr_values:
+			for batch_size in batch_values:
+				print(f"Training with: Epochs: {epoch}, LR: {lr}, Batch Size: {batch_size}")
+				model = train_node_network(train, testing_data=test,
+					n_epochs=epoch, batch_size=batch_size, lr=lr)
+				acc = test_node_network(model, test)
+				print(f"Accuracy found: {acc}")
+
+				combinations_list.append((batch_size, lr, epoch, model.state_dict(), acc))
+
+	combinations_list.sort(key=lambda x: x[-1])
+	best = combinations_list[-1]
+	print(f"The best model found had: batch size: {best[0]}, LR: {best[1]}, epochs: {epoch}")
+	return best[-2]
 
 
 def test_node_network(model, data):

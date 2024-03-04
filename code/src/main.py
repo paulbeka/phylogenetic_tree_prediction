@@ -2,9 +2,9 @@ from get_tree_features import get_tree_features
 from algorithm import run_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10
-from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn
-from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork
+from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network
+from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network
 
 import random, dendropy, os, argparse, pickle, torch, copy
 import numpy as np
@@ -60,15 +60,23 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	training_data["spr"] = get_dataloader(training_data["spr"])
 	testing_data["spr"] = get_dataloader(testing_data["spr"])
 
-	spr_model = train_value_network(training_data["spr"], test=testing_data["spr"])
-	gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]) #testing_data=testing_data
-	node_model = train_node_network(training_data["node"], testing_data=testing_data["node"])
+	# NEXT: SWITCH TO THE 1 SHOT GNN AND ALSO MAKE IT LOOP ON THE SAME TREE INSTEAD OF SMALL DATASET
+	# THEN, RUN ON LINUX TO FINALLY GET A WORKING SPR NETWORK
+	if args.optimize:
+		# spr_model = optimize_spr_network(training_data["spr"], testing_data["spr"])
+		gnn_model = optimize_gnn_network(training_data["gnn"], testing_data["gnn"])
+		# node_model = optimize_node_network(training_data["node"], testing_data["node"])
 
-	# compare_score(spr_model, testing_data["spr"])
+	else:
+		spr_model = train_value_network(training_data["spr"], test=testing_data["spr"]).state_dict()
+		gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
+		node_model = train_node_network(training_data["node"], testing_data=testing_data["node"]).state_dict()
 
-	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr")
-	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn")
-	torch.save(node_model.state_dict(), f"{args.output_dest}/node")
+		# compare_score(spr_model, testing_data["spr"])
+
+	torch.save(spr_model, f"{args.output_dest}/spr")
+	torch.save(gnn_model, f"{args.output_dest}/gnn")
+	torch.save(node_model, f"{args.output_dest}/node")
 
 
 def algorithm(args):
@@ -83,13 +91,8 @@ def algorithm(args):
 
 
 def test(args, data=None, models=None):
+	# TODAY: CHANGE TO 1 SHOT GNN
 	spr_model, gnn_model, node_model = load_models(args)
-
-	# need to calculate the actual score at every iteration, similar to data data_generation
-	# then find the top 10 at each and see if the gnn or spr network can detect it 
-	# calculate the maximum likelihood reached by algorithm, and the path
-	# 	-> need a way to caclaulte the true ll for every move
-	# calculate time taken, pretty simple. Try for multiple datasets.
 
 	if args.data:
 		pass # Open the file with the large datasets here
@@ -123,6 +126,7 @@ def test(args, data=None, models=None):
 	print(f"GNN AUC Score: {auc_score_gnn}")
 	print(f"Node AUC Score: {auc_score_node}")
 
+	# REMOVE THESE COMMENTS FOR ACTUAL TESTING
 	# acc_gnn = cv_validation_gnn(testing_data["gnn"])
 	# acc_node = cv_validation_node(testing_data["node"])
 
@@ -131,8 +135,6 @@ def test(args, data=None, models=None):
 
 	print(f"GNN accuracy 5-fold CV: {acc_gnn}")
 	print(f"Node accuracy 5-fold CV: {acc_node}")
-
-	# plot error bars for the gnn and node networks
 
 	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
 	gnn_err, node_err = max([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-node_mean) for x in acc_node]) 
@@ -184,9 +186,9 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 			n_items=n_items_random_walk,
 		 	generate_node=generate_node)
 		training_data["spr"] += dataset
-		training_data["gnn"] += gnn_dataset
+		# training_data["gnn"] += gnn_dataset
 		training_data["node"] += node_dataset
-		# training_data["gnn"] += gnn_1_move(tree) 	# Implement this later (?)
+		training_data["gnn"] += gnn_1_move(tree) 	# Implement this later (?)
 
 	return training_data
 
@@ -207,7 +209,6 @@ def create_dataset(tree,
 		actionSpace = tree.find_action_space()
 		if rapid:
 			action = random.choice(actionSpace)
-			# SPR ACTION IS BROKEN SOMEHOW !!!!!
 			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 			treeProperties = get_tree_features(tree, action[0], original_point)
 
@@ -255,9 +256,9 @@ def create_dataset(tree,
 
 def gnn_1_move(tree):
 	actionSpace = tree.find_action_space()
-	random.shuffle(actionSpace)
 	already_done = set()
 	p = []
+	# START FROM THE BOTTOM NODES AND WORK UP
 	for action in actionSpace:
 		if not ((action[0] in already_done) or (action[1] in already_done)):
 			p.append(action)
@@ -267,9 +268,12 @@ def gnn_1_move(tree):
 
 	gnn_dataset = []
 	targets = []
-	for action in actionSpace[:int(len(actionSpace)/4)]:
-		original_point = tree.perform_spr(action[0], action[1], return_parent=True)
-		targets.append(original_point)
+	for action in actionSpace:
+		try:
+			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
+			targets.append(original_point)
+		except:
+			pass
 	gnn_dataset.append(load_tree(tree, target=targets))
 	return gnn_dataset
 
@@ -300,6 +304,8 @@ if __name__ == "__main__":
 		help="Give the location of the stored NNs if algorithm is being run")
 	parser.add_argument("-d", "--data",
 		help="The location of the bulk data to test/train neural networks")
+	parser.add_argument("-O", "--optimize", action="store_true",
+		help="Optimize the network hyperparameters while running")
 	args = parser.parse_args()
 
 	WINDOWS = args.windows

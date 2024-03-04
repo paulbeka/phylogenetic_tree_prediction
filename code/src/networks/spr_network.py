@@ -31,21 +31,19 @@ class SprScoreFinder(nn.Module):
 		return x
 
 
-def train_value_network(train_loader, test=None):
-	num_epochs = 10
-	batch_size = 1
-	learning_rate = 0.0001
+def train_value_network(train_loader, test=None,
+	n_epochs=10, batch_size=1, lr=0.0001):
 
 	model =  SprScoreFinder(batch_size).double()
 
 	criterion = nn.MSELoss()
-	optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+	optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 	best_model = (None, 9999999)
 
 	total_steps = len(train_loader)
-	for epoch in range(num_epochs):
-		print(f"Epoch: {epoch+1}/{num_epochs}")
+	for epoch in range(n_epochs):
+		print(f"Epoch: {epoch+1}/{n_epochs}")
 		for i, (items, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
 
 			outputs = model(items.double())
@@ -151,6 +149,30 @@ def test_model_ll_increase(model, tree, n_iters=50):
 	plt.show()
 
 
+def optimize_spr_network(train, test):
+	epoch_values = [10, 20]
+	lr_values = [0.0001, 0.001, 0.0005]
+	batch_values = [1, 5, 20]
+
+	combinations_list = []
+	for epoch in epoch_values:
+		for lr in lr_values:
+			for batch_size in batch_values:
+				print(f"Training with: Epochs: {epoch}, LR: {lr}, Batch Size: {batch_size}")
+				model = train_value_network(train, test=test,
+					n_epochs=epoch, batch_size=batch_size, lr=lr)
+				acc = test_value_network(model, test)
+				print(f"Accuracy found: {acc}")
+
+				combinations_list.append((batch_size, lr, epoch, model.state_dict(), acc))
+
+	combinations_list.sort(key=lambda x: x[-1])
+	best = combinations_list[-1]
+	print(f"The best model found had: batch size: {best[0]}, LR: {best[1]}, epochs: {epoch}")
+	return best[-2]
+
+
+##### UTILITY FUNCTIONS #####
 def get_dataloader(dataset, batch_size=1):
 	data = [(np.array(list(item[0].values())), item[1]) for item in dataset]
 	train_loader = torch.utils.data.DataLoader(dataset=data, batch_size=batch_size, shuffle=True)
