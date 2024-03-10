@@ -84,8 +84,10 @@ def algorithm(args):
 	try:
 		t0 = time.time()
 		tree = Tree(args.location)
-		run_algorithm(tree, spr_model, gnn_model, n_iter)
-		print(f"Time taken to run {n_iter} iterations: {time.time()-t0}")
+		final_tree = run_algorithm(tree, spr_model, gnn_model, n_iter)
+		final_time = time.time()-t0
+		print(f"Time taken to run {n_iter} iterations: {final_time}")
+		return final_time, final_tree
 	except Exception as e:
 		traceback.print_exc()
 
@@ -185,6 +187,13 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 			generate_true_ratio=generate_true_ratio, 
 			n_items=n_items_random_walk,
 		 	generate_node=generate_node)
+
+		plt.plot([x[1] for x in base_ll])
+		plt.xlabel("Iteration")
+		plt.ylabel("Likelihood")
+		plt.title("Likelihood to iteration ratio")
+		plt.show()
+
 		training_data["spr"] += dataset
 		# training_data["gnn"] += gnn_dataset
 		training_data["node"] += node_dataset

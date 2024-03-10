@@ -1,6 +1,7 @@
 import torch
 from networks.gnn_network import load_tree
 from get_tree_features import get_tree_features
+from util.raxml_util import calculate_raxml
 
 
 N_TOP = 3
@@ -10,8 +11,9 @@ def train_algorithm(tree, n_iters):
 	pass
 
 
-def run_algorithm(tree, spr_model, gnn_model, n_iters):
+def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 	ll_path = []
+	true_ll_path = []
 	for i in range(n_iters):
 		tree_gnn_data = load_tree(tree)
 		_, top = torch.topk(gnn_model(tree_gnn_data.x, tree_gnn_data.edge_index)[:, 0], N_TOP)
@@ -34,8 +36,27 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters):
 		tree.perform_spr(best_move[0][0], best_move[0][1])
 		ll_path.append(best_move[1].item())
 
-	print(ll_path)
-	return tree
+		if find_true_ll_path:
+			true_ll_path.append(float(calculate_raxml(tree)["ll"]))
+
+	if find_true_ll_path:
+		return tree, true_ll_path
+	else:
+		return tree
+
+
+
+def train_algorithm_reinforcement_learning(data, spr_model, gnn_model, n_iters):
+	path = []
+	for i in range(n_iters):
+		for tree in dataset:
+			true_tree = None # set this to the real tree
+			final_tree = run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False)
+			# get ll score of the final tree
+			if final_tree == true_tree:
+				# then give a good score to the network
+				score = 100
+				# How do I assign it to be DRL?
 
 
 def test_algorithm(starting_tree):
