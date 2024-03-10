@@ -57,6 +57,19 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 		training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 		testing_data = generate(files[16:], generate_true_ratio=True, generate_node=True)
 
+
+	t = [x[1] for x in training_data["base_ll"][0]]
+	for i in range(1, 15):
+		for j in range(len(t)-1):
+			t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
+
+	print(t)
+	plt.plot(t)
+	plt.xlabel("Iteration")
+	plt.ylabel("Likelihood")
+	plt.title("Likelihood to iteration ratio")
+	plt.show()
+
 	training_data["spr"] = get_dataloader(training_data["spr"])
 	testing_data["spr"] = get_dataloader(testing_data["spr"])
 
@@ -180,6 +193,7 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 		"spr": [],
 		"gnn": [],
 		"node":[],
+		"base_ll": []
 	}
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
@@ -188,16 +202,11 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 			n_items=n_items_random_walk,
 		 	generate_node=generate_node)
 
-		plt.plot([x[1] for x in base_ll])
-		plt.xlabel("Iteration")
-		plt.ylabel("Likelihood")
-		plt.title("Likelihood to iteration ratio")
-		plt.show()
-
 		training_data["spr"] += dataset
 		# training_data["gnn"] += gnn_dataset
 		training_data["node"] += node_dataset
 		training_data["gnn"] += gnn_1_move(tree) 	# Implement this later (?)
+		training_data["base_ll"].append(base_ll)
 
 	return training_data
 
