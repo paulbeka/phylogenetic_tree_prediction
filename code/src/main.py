@@ -221,9 +221,15 @@ def create_dataset(tree,
 	gnn_dataset = []
 	node_dataset = []
 	base_ll = []
-	prev_ll = None
 	for i in range(n_items):
 		actionSpace = tree.find_action_space()
+
+		# Get the previous raxml-score
+		if WINDOWS:
+			prev_raxml_score = 0
+		else:
+			prev_raxml_score = float(calculate_raxml(tree)["ll"])
+
 		if rapid:
 			action = random.choice(actionSpace)
 			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
@@ -242,11 +248,8 @@ def create_dataset(tree,
 				raxml_score = float(calculate_raxml(tree)["ll"])
 			
 			base_ll.append((i, raxml_score))
-
-			if not prev_ll:
-				score = abs(raxml_score)
-			else:
-				score = prev_ll - abs(raxml_score)
+			score = prev_raxml_score - raxml_score
+			prev_raxml_score = raxml_score
 
 			dataset.append((treeProperties, score))
 
