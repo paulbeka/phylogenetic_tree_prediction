@@ -58,17 +58,17 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 		testing_data = generate(files[16:], generate_true_ratio=True, generate_node=True)
 
 
-	t = [x[1] for x in training_data["base_ll"][0]]
-	for i in range(1, 15):
-		for j in range(len(t)-1):
-			t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
+	# t = [x[1] for x in training_data["base_ll"][0]]
+	# for i in range(1, 15):
+	# 	for j in range(len(t)-1):
+	# 		t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
 
-	print(t)
-	plt.plot(t)
-	plt.xlabel("Iteration")
-	plt.ylabel("Likelihood")
-	plt.title("Likelihood to iteration ratio")
-	plt.show()
+	# print(t)
+	# plt.plot(t)
+	# plt.xlabel("Iteration")
+	# plt.ylabel("Likelihood")
+	# plt.title("Likelihood to iteration ratio")
+	# plt.show()
 
 	training_data["spr"] = get_dataloader(training_data["spr"])
 	testing_data["spr"] = get_dataloader(testing_data["spr"])
@@ -76,16 +76,14 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	# NEXT: SWITCH TO THE 1 SHOT GNN AND ALSO MAKE IT LOOP ON THE SAME TREE INSTEAD OF SMALL DATASET
 	# THEN, RUN ON LINUX TO FINALLY GET A WORKING SPR NETWORK
 	if args.optimize:
-		# spr_model = optimize_spr_network(training_data["spr"], testing_data["spr"])
+		spr_model = optimize_spr_network(training_data["spr"], testing_data["spr"])
 		gnn_model = optimize_gnn_network(training_data["gnn"], testing_data["gnn"])
-		# node_model = optimize_node_network(training_data["node"], testing_data["node"])
+		node_model = optimize_node_network(training_data["node"], testing_data["node"])
 
 	else:
 		spr_model = train_value_network(training_data["spr"], test=testing_data["spr"]).state_dict()
 		gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
 		node_model = train_node_network(training_data["node"], testing_data=testing_data["node"]).state_dict()
-
-		# compare_score(spr_model, testing_data["spr"])
 
 	torch.save(spr_model, f"{args.output_dest}/spr")
 	torch.save(gnn_model, f"{args.output_dest}/gnn")
