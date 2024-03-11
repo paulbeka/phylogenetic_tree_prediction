@@ -53,7 +53,7 @@ def train_value_network(train_loader, test=None,
 			optimizer.step()
 
 		if test:
-			loss = test_value_network(model, test)
+			loss = test_top_10(model, test)
 			if loss < best_model[1]:
 				best_model = (model, loss)
 
@@ -84,7 +84,7 @@ def test_top_10(model, test_dataset):
 			preds = []
 			max_pred = None
 			for item in group:
-				x = model(torch.Tensor(list(item[0].values()))).item()
+				x = model(torch.Tensor(list(item[0].values())).double()).item()
 				if max_pred == None or max_pred[1] < x:
 					max_pred = (item[0], x)
 
@@ -161,7 +161,7 @@ def optimize_spr_network(train, test):
 				print(f"Training with: Epochs: {epoch}, LR: {lr}, Batch Size: {batch_size}")
 				model = train_value_network(train, test=test,
 					n_epochs=epoch, batch_size=batch_size, lr=lr)
-				acc = test_value_network(model, test)
+				acc = test_top_10(model, test)
 				print(f"Accuracy found: {acc}")
 
 				combinations_list.append((batch_size, lr, epoch, model.state_dict(), acc))

@@ -6,7 +6,7 @@ from networks.spr_network import SprScoreFinder, get_dataloader, train_value_net
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network
 from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network
 
-import random, dendropy, os, argparse, pickle, torch, copy
+import random, dendropy, os, argparse, pickle, torch, copy, time
 import numpy as np
 from datetime import datetime
 from tqdm import tqdm
@@ -71,17 +71,18 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	# plt.show()
 
 	training_data["spr"] = get_dataloader(training_data["spr"])
-	testing_data["spr"] = get_dataloader(testing_data["spr"])
+	# testing_data["spr"] = get_dataloader(testing_data["spr"])
+	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 
 	# NEXT: SWITCH TO THE 1 SHOT GNN AND ALSO MAKE IT LOOP ON THE SAME TREE INSTEAD OF SMALL DATASET
 	# THEN, RUN ON LINUX TO FINALLY GET A WORKING SPR NETWORK
 	if args.optimize:
-		spr_model = optimize_spr_network(training_data["spr"], testing_data["spr"])
+		spr_model = optimize_spr_network(training_data["spr"], spr_testing_dataset)
 		gnn_model = optimize_gnn_network(training_data["gnn"], testing_data["gnn"])
 		node_model = optimize_node_network(training_data["node"], testing_data["node"])
 
 	else:
-		spr_model = train_value_network(training_data["spr"], test=testing_data["spr"]).state_dict()
+		spr_model = train_value_network(training_data["spr"], test=spr_testing_dataset).state_dict()
 		gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
 		node_model = train_node_network(training_data["node"], testing_data=testing_data["node"]).state_dict()
 
@@ -201,9 +202,9 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 		 	generate_node=generate_node)
 
 		training_data["spr"] += dataset
-		# training_data["gnn"] += gnn_dataset
+		# training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
 		training_data["node"] += node_dataset
-		training_data["gnn"] += gnn_1_move(tree) 	# Implement this later (?)
+		training_data["gnn"] += gnn_1_move(tree) 
 		training_data["base_ll"].append(base_ll)
 
 	return training_data
