@@ -88,9 +88,7 @@ def test_top_10(model, test_dataset):
 				if max_pred == None or max_pred[1] < x:
 					max_pred = (item[0], x)
 
-			print(max_pred)
-			print([item[0] for item in group[-10:]])
-			if max_pred in [item[0] for item in group[-10:]]:
+			if max_pred[0] in [item[0] for item in group[-5:]]:
 				n_top_10 += 1
 
 	return (n_top_10 / len(test_dataset))*100
