@@ -57,9 +57,10 @@ class Tree:
 
 
 	# TODO: Fix operation close to the root of the tree
-	def perform_spr(self, subtree, regraft_location, return_parent=False):
-		# subtree = list(self.tree.find_elements(name=subtree.name))[0]
-		# regraft_location = list(self.tree.find_elements(name=regraft_location.name))[0]
+	def perform_spr(self, subtree, regraft_location, return_parent=False, deepcopy=False):
+		if deepcopy:
+			subtree = list(self.tree.find_elements(name=subtree.name))[0]
+			regraft_location = list(self.tree.find_elements(name=regraft_location.name))[0]
 
 
 		parent = get_parent(self.tree, subtree)

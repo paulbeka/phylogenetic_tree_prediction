@@ -58,17 +58,17 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 		testing_data = generate(files[16:], generate_true_ratio=True, generate_node=True)
 
 
-	# t = [x[1] for x in training_data["base_ll"][0]]
-	# for i in range(1, 15):
-	# 	for j in range(len(t)-1):
-	# 		t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
+	t = [x[1] for x in training_data["base_ll"][0]]
+	for i in range(1, 15):
+		for j in range(len(t)-1):
+			t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
 
-	# print(t)
-	# plt.plot(t)
-	# plt.xlabel("Iteration")
-	# plt.ylabel("Likelihood")
-	# plt.title("Likelihood to iteration ratio")
-	# plt.show()
+	print(t)
+	plt.plot(t)
+	plt.xlabel("Iteration")
+	plt.ylabel("Likelihood")
+	plt.title("Likelihood to iteration ratio")
+	plt.show()
 
 	training_data["spr"] = get_dataloader(training_data["spr"])
 	# testing_data["spr"] = get_dataloader(testing_data["spr"])
@@ -212,7 +212,7 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 
 def create_dataset(tree, 
 		n_items=40,  					# Number of random mutations
-		rapid=True, 					# Find best mutation at every time step
+		rapid=False, 					# Find best mutation at every time step
 		generate_true_ratio=True, 		# Generate 1-to-1 (even dataset) or the true ratio
 		generate_node=False,			# Generate data for node network
 	):
@@ -231,6 +231,7 @@ def create_dataset(tree,
 			prev_raxml_score = float(calculate_raxml(tree)["ll"])
 
 		if rapid:
+			# CHECK IF THE MOVE HAS INCREASED IN LIKELIHOOD AND IF IT HAS, THEN APPLY IT????
 			action = random.choice(actionSpace)
 			original_point = tree.perform_spr(action[0], action[1], return_parent=True)
 			treeProperties = get_tree_features(tree, action[0], original_point)
@@ -259,15 +260,17 @@ def create_dataset(tree,
 			for action in actionSpace:
 				treeCopy = copy.deepcopy(tree)
 				actionCopy = copy.deepcopy(action)
-				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True)
-				# raxml_score = float(calculate_raxml(treeCopy)["ll"])
-				raxml_score = 0
+				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True, deepcopy=True)
+				if WINDOWS:
+					raxml_score = 0
+				else:
+					raxml_score = float(calculate_raxml(treeCopy)["ll"])
 				ranking.append((action, raxml_score))
 
 			ranking.sort(key=lambda x: x[1])
-			# gnn_dataset.append((tree, ranking))
 			subtr, regraft = ranking[0][0]
 			original_point = tree.perform_spr(subtr, regraft, return_parent=True)
+			gnn_dataset.append(load_tree(tree, target=[subtr]))
 			treeProperties = get_tree_features(tree, subtr, original_point)
 			dataset.append((treeProperties, ranking[0][1]))
 
