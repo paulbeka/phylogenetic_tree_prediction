@@ -29,7 +29,7 @@ class NodeNetwork(nn.Module):
 
 
 def train_node_network(dataset, testing_data=None,
-	n_epochs=10, batch_size=3, lr=0.0005):
+	n_epochs=30, batch_size=1, lr=0.0005):
 
 	dataset = torch.utils.data.DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
@@ -130,6 +130,7 @@ def load_node_data(tree, original_point=None, generate_true_ratio=False):
 
 		dat = {x: (payload[x]/payload["total"]) if x in payload else 0 for x in BASE_SEQUENCES}
 		dat = torch.tensor([*list(dat.values()), (get_node_depth(tree.tree, curr)/10)])*10 # add the depth measure
+		
 		if original_point == curr:
 			data = (dat, torch.Tensor([1, 0]))
 		else:

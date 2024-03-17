@@ -1,5 +1,5 @@
 from get_tree_features import get_tree_features
-from algorithm import run_algorithm
+from algorithm import run_algorithm, test_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network
@@ -39,7 +39,8 @@ def data_generation(args, returnData=False):
 
 
 def train(args):
-	training_data = None
+	files = find_data_files(os.path.join(BASE_DIR, args.location))
+	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 
 	spr_model = train_value_network(training_data["spr"])
 	gnn_model = train_gnn_network(training_data["gnn"])
@@ -92,12 +93,12 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 
 
 def algorithm(args):
-	n_iter = 50
+	spr_model, gnn_model, node_model = load_models(args)
 	try:
 		t0 = time.time()
 		tree = Tree(args.location)
-		final_tree = run_algorithm(tree, spr_model, gnn_model, n_iter)
-		final_time = time.time()-t0
+		final_tree = test_algorithm(tree, spr_model, gnn_model)
+		final_time = time.time() - t0
 		print(f"Time taken to run {n_iter} iterations: {final_time}")
 		return final_time, final_tree
 	except Exception as e:
@@ -113,11 +114,11 @@ def test(args, data=None, models=None):
 	else:
 		n_items_random_walk = 40
 		files = find_data_files(os.path.join(BASE_DIR, args.location))
-		testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True)
+		testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True, multiple_move=False)
 		spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	
 	spr_top_10 = test_top_10(spr_model, spr_testing_dataset)
-	# gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
+	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
 	# print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
@@ -139,6 +140,10 @@ def test(args, data=None, models=None):
 
 	print(f"GNN AUC Score: {auc_score_gnn}")
 	print(f"Node AUC Score: {auc_score_node}")
+
+	# remake data with multiple move for CV validation
+	testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True, multiple_move=True)
+	print(len(testing_data["node"]))
 
 	acc_gnn = cv_validation_gnn(testing_data["gnn"])
 	acc_node = cv_validation_node(testing_data["node"])
@@ -167,7 +172,7 @@ def test(args, data=None, models=None):
 #################### NON COMMAND EXECUTABLES ####################
 
 def load_models(args):
-	spr_model = SprScoreFinder(1).double()
+	spr_model = SprScoreFinder(1)
 	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
 	spr_model.eval()
 
@@ -183,7 +188,7 @@ def load_models(args):
 
 
 # TODO: add option for gnn 1 move or regular
-def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, generate_node=False):
+def generate(data_files, generate_true_ratio=False, n_items_random_walk=40, generate_node=False, multiple_move=True):
 	training_data = {
 		"spr": [],
 		"gnn": [],
@@ -198,9 +203,11 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 		 	generate_node=generate_node)
 
 		training_data["spr"] += dataset
-		training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
 		training_data["node"] += node_dataset
-		training_data["gnn"] += gnn_1_move(tree) 	# MAKE IT WORK FOR TESTING
+		if multiple_move:
+			training_data["gnn"] += gnn_1_move(tree) 	# MAKE IT WORK FOR TESTING
+		else:
+			training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
 		training_data["base_ll"].append(base_ll)
 
 	return training_data

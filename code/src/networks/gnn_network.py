@@ -61,7 +61,6 @@ def train_gnn_network(dataset, testing_data=None,
 		if testing_data:
 			acc = test_gnn_network(model, testing_data, best=best_acc[1])
 			if best_acc[1] < acc:
-			# 	print(f"Balanced Accuracy: {balanced_acc:.2f}%")
 				best_acc = (model, acc) 
 
 		print(f'Epoch: {epoch}, Loss: {loss}')

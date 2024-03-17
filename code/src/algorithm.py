@@ -45,22 +45,31 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 		return tree
 
 
+def test_algorithm(starting_tree, spr_model, gnn_model):
+	max_n_iters = 50
+	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
+	
+	plt.plot(path)
+	plt.show()
 
-def train_algorithm_reinforcement_learning(data, spr_model, gnn_model, n_iters):
-	path = []
-	for i in range(n_iters):
-		for tree in dataset:
-			true_tree = None # set this to the real tree
-			final_tree = run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False)
-			# get ll score of the final tree
-			if final_tree == true_tree:
-				# then give a good score to the network
-				score = 100
-				# How do I assign it to be DRL?
+	# use raxml-ng to find the same tree and see what it gives
+	# need to feed the original file I think?
 
 
-def test_algorithm(starting_tree):
-	pass
+
+# def train_algorithm_reinforcement_learning(data, spr_model, gnn_model, n_iters):
+# 	path = []
+# 	for i in range(n_iters):
+# 		for tree in dataset:
+# 			true_tree = None # set this to the real tree
+# 			final_tree = run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False)
+# 			# get ll score of the final tree
+# 			if final_tree == true_tree:
+# 				# then give a good score to the network
+# 				score = 100
+# 				# How do I assign it to be DRL?
+
+
 
 
 def load_saved_models():
