@@ -43,15 +43,18 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 	if find_true_ll_path:
 		return tree, true_ll_path
 	else:
-		return tree
+		return tree, [0]*n_iters
 
 
 def test_algorithm(starting_tree, spr_model, gnn_model):
 	max_n_iters = 50
-	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
+	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=False)
 	
 	plt.plot(path)
-	plt.show()
+	plt.title("Likelihood over time")
+	plt.xlabel("Number of iterations")
+	plt.ylabel("Likelihood")
+	plt.savefig("alg_output")
 
 	# use raxml-ng to find the same tree and see what it gives
 	# need to feed the original file I think?

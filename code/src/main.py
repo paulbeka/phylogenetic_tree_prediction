@@ -99,7 +99,7 @@ def algorithm(args):
 		tree = Tree(args.location)
 		final_tree = test_algorithm(tree, spr_model, gnn_model)
 		final_time = time.time() - t0
-		print(f"Time taken to run {n_iter} iterations: {final_time}")
+		print(f"Time taken to run: {final_time}")
 		return final_time, final_tree
 	except Exception as e:
 		traceback.print_exc()
