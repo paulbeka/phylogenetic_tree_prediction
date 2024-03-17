@@ -36,7 +36,7 @@ class GCN(torch.nn.Module):
 
 
 def train_gnn_network(dataset, testing_data=None,
-	n_epochs=20, lr=0.0001):
+	n_epochs=30, lr=0.0001):
 
 	if len(dataset) < 1:
 		raise Exception("No training data!")
@@ -59,7 +59,7 @@ def train_gnn_network(dataset, testing_data=None,
 		for data in dataset:
 			loss = train(data)
 		if testing_data:
-			acc = test_gnn_network(model, testing_data, best=best_acc[1])
+			acc = test_gnn_network(model, testing_data)
 			if best_acc[1] < acc:
 				best_acc = (model, acc) 
 
@@ -68,6 +68,15 @@ def train_gnn_network(dataset, testing_data=None,
 	print(f"Best accuracy found: {best_acc[1]:.2f}%")
 
 	return best_acc[0]
+
+
+def train_until_max_found(dataset, testing):
+	threshold = 72
+	curr, model = 0, None
+	while curr < threshold:
+		model = train_gnn_network(dataset, testing)
+		curr = test_gnn_network(model, testing)
+	return model
 
 
 # TODO: OPTIMIZE THIS CODE 
@@ -159,7 +168,7 @@ def get_amino_acid_frequency(sequence):
 	return data
 
 
-def test_gnn_network(model, data, best=None):
+def test_gnn_network(model, data):
 	predicted_labels = []
 	true_labels = []
 

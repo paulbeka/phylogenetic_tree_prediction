@@ -12,6 +12,7 @@ def train_algorithm(tree, n_iters):
 	pass
 
 
+# This is a greedy algorithm
 def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 	ll_path = []
 	true_ll_path = []

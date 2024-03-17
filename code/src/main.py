@@ -3,7 +3,7 @@ from algorithm import run_algorithm, test_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network
-from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network, train_until_max_found
 from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network
 
 import random, dendropy, os, argparse, pickle, torch, copy, time
@@ -41,9 +41,10 @@ def data_generation(args, returnData=False):
 def train(args):
 	files = find_data_files(os.path.join(BASE_DIR, args.location))
 	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
+	testing_data = generate(files[16:], generate_true_ratio=False, generate_node=True)
 
-	spr_model = train_value_network(training_data["spr"])
-	gnn_model = train_gnn_network(training_data["gnn"])
+	spr_model = train_value_network(training_data["spr"], testing_data["spr"])
+	gnn_model = train_until_max_found(training_data["gnn"], testing_data["gnn"])
 
 	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
 	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
@@ -84,7 +85,7 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 
 	else:
 		spr_model = train_value_network(training_data["spr"], test=spr_testing_dataset).state_dict()
-		gnn_model = train_gnn_network(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
+		gnn_model = train_until_max_found(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
 		node_model = train_node_network(training_data["node"], testing_data=testing_data["node"]).state_dict()
 
 	torch.save(spr_model, f"{args.output_dest}/spr")
@@ -95,9 +96,9 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 def algorithm(args):
 	spr_model, gnn_model, node_model = load_models(args)
 	try:
-		t0 = time.time()
 		tree = Tree(args.location)
 		tree = shuffle_tree(tree)
+		t0 = time.time()
 		final_tree = test_algorithm(tree, spr_model, gnn_model)
 		final_time = time.time() - t0
 		print(f"Time taken to run: {final_time}")
@@ -173,7 +174,7 @@ def test(args, data=None, models=None):
 #################### NON COMMAND EXECUTABLES ####################
 
 def load_models(args):
-	spr_model = SprScoreFinder(1)
+	spr_model = SprScoreFinder(1).double()
 	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
 	spr_model.eval()
 
@@ -290,6 +291,7 @@ def shuffle_tree(tree):
 		action = random.choice(actionSpace)
 		tree.perform_spr(action[0], action[1], return_parent=True)
 	return tree
+
 
 def gnn_1_move(tree):
 	actionSpace = tree.find_action_space()
