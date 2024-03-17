@@ -2,6 +2,7 @@ import torch
 from networks.gnn_network import load_tree
 from get_tree_features import get_tree_features
 from util.raxml_util import calculate_raxml
+import matplotlib.pyplot as plt
 
 
 N_TOP = 3
