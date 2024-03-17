@@ -117,10 +117,10 @@ def test(args, data=None, models=None):
 		spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	
 	spr_top_10 = test_top_10(spr_model, spr_testing_dataset)
-	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
+	# gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
-	print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
+	# print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
 
 	gnn_preds, gnn_true = [], []
 	node_preds, node_true = [], []
@@ -140,12 +140,8 @@ def test(args, data=None, models=None):
 	print(f"GNN AUC Score: {auc_score_gnn}")
 	print(f"Node AUC Score: {auc_score_node}")
 
-	# REMOVE THESE COMMENTS FOR ACTUAL TESTING
-	# acc_gnn = cv_validation_gnn(testing_data["gnn"])
-	# acc_node = cv_validation_node(testing_data["node"])
-
-	acc_gnn = [0.65, 0.61, 0.66, 0.57, 0.59]
-	acc_node = [0.55, 0.54, 0.59, 0.6, 0.52]
+	acc_gnn = cv_validation_gnn(testing_data["gnn"])
+	acc_node = cv_validation_node(testing_data["node"])
 
 	print(f"GNN accuracy 5-fold CV: {acc_gnn}")
 	print(f"Node accuracy 5-fold CV: {acc_node}")
@@ -158,7 +154,7 @@ def test(args, data=None, models=None):
 	plt.ylabel('Balanced accuracy')
 	plt.title('Performance Comparison') 
 	plt.xticks(rotation=45)
-	plt.ylim(0, 1) 
+	plt.ylim(0, 100) 
 
 	for bar in bars:
 	    yval = bar.get_height()
@@ -171,7 +167,7 @@ def test(args, data=None, models=None):
 #################### NON COMMAND EXECUTABLES ####################
 
 def load_models(args):
-	spr_model = SprScoreFinder(1)
+	spr_model = SprScoreFinder(1).double()
 	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
 	spr_model.eval()
 
@@ -202,9 +198,9 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 		 	generate_node=generate_node)
 
 		training_data["spr"] += dataset
-		# training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
+		training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
 		training_data["node"] += node_dataset
-		training_data["gnn"] += gnn_1_move(tree) 
+		training_data["gnn"] += gnn_1_move(tree) 	# MAKE IT WORK FOR TESTING
 		training_data["base_ll"].append(base_ll)
 
 	return training_data
@@ -212,7 +208,7 @@ def generate(data_files, generate_true_ratio=True, n_items_random_walk=40, gener
 
 def create_dataset(tree, 
 		n_items=40,  					# Number of random mutations
-		rapid=False, 					# Find best mutation at every time step
+		rapid=True, 					# Find best mutation at every time step
 		generate_true_ratio=True, 		# Generate 1-to-1 (even dataset) or the true ratio
 		generate_node=False,			# Generate data for node network
 	):
@@ -271,6 +267,9 @@ def create_dataset(tree,
 			subtr, regraft = ranking[0][0]
 			original_point = tree.perform_spr(subtr, regraft, return_parent=True)
 			gnn_dataset.append(load_tree(tree, target=[subtr]))
+			if generate_node:
+				node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
+				node_dataset += node_data
 			treeProperties = get_tree_features(tree, subtr, original_point)
 			dataset.append((treeProperties, ranking[0][1]))
 

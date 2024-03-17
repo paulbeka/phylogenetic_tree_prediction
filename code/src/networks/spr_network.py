@@ -74,7 +74,8 @@ def test_value_network(model, test_loader):
 	return test_loss / len(test_loader)	
 
 
-# Badly made, so the dataset is not in Torch form (so its done manually, could cause confusion)
+# Look at the top move from the set of moves which was done during random walk
+# Avoids having to re-calculate raxml-ng scores for each tree (less compute time)
 def test_top_10(model, test_dataset):
 	n_top_10 = 0
 
@@ -91,7 +92,7 @@ def test_top_10(model, test_dataset):
 			if max_pred[0] in [item[0] for item in group[-5:]]:
 				n_top_10 += 1
 
-	return (n_top_10 / len(test_dataset))*100
+	return (n_top_10 / (len(test_dataset)*len(test_dataset[0])))*100
 
 
 def compare_score(model, test_loader):

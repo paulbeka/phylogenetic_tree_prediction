@@ -36,7 +36,7 @@ class GCN(torch.nn.Module):
 
 
 def train_gnn_network(dataset, testing_data=None,
-	n_epochs=10, lr=0.0001):
+	n_epochs=20, lr=0.0001):
 
 	if len(dataset) < 1:
 		raise Exception("No training data!")
