@@ -97,6 +97,7 @@ def algorithm(args):
 	try:
 		t0 = time.time()
 		tree = Tree(args.location)
+		tree = shuffle_tree(tree)
 		final_tree = test_algorithm(tree, spr_model, gnn_model)
 		final_time = time.time() - t0
 		print(f"Time taken to run: {final_time}")
@@ -282,6 +283,13 @@ def create_dataset(tree,
 
 	return dataset, gnn_dataset, node_dataset, base_ll
 
+
+def shuffle_tree(tree):
+	for i in range(10):
+		actionSpace = tree.find_action_space()
+		action = random.choice(actionSpace)
+		tree.perform_spr(action[0], action[1], return_parent=True)
+	return tree
 
 def gnn_1_move(tree):
 	actionSpace = tree.find_action_space()
