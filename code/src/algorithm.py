@@ -16,6 +16,7 @@ def train_algorithm(tree, n_iters):
 def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 	ll_path = []
 	true_ll_path = []
+	max_ll = -999999999
 	for i in range(n_iters):
 		
 		loop = 0
@@ -38,7 +39,9 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 		ll_path.append(best_move[1])
 
 		if find_true_ll_path:
-			true_ll_path.append(float(calculate_raxml(tree)["ll"]))
+			score = float(calculate_raxml(tree)["ll"])
+			max_ll = max(max_ll, score)
+			true_ll_path.append(max_ll)
 
 	if find_true_ll_path:
 		return tree, true_ll_path
@@ -60,10 +63,11 @@ def find_candidates(tree, gnn_model, N_TOP):
 	return candidates
 
 
-def test_algorithm(starting_tree, spr_model, gnn_model):
+def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	max_n_iters = 50
 	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=False)
 	
+	plt.plot([original_score]*max_n_iters)
 	plt.plot(path)
 	plt.title("Likelihood over time")
 	plt.xlabel("Number of iterations")

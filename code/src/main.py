@@ -96,9 +96,10 @@ def algorithm(args):
 	spr_model, gnn_model, node_model = load_models(args)
 	try:
 		tree = Tree(args.location)
+		original_score = calculate_raxml(tree)["ll"]
 		tree = shuffle_tree(tree)
 		t0 = time.time()
-		final_tree = test_algorithm(tree, spr_model, gnn_model)
+		final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
 		final_time = time.time() - t0
 		print(f"Time taken to run: {final_time}")
 		return final_time, final_tree
