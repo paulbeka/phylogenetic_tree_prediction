@@ -70,7 +70,7 @@ def train_gnn_network(dataset, testing_data=None,
 	return best_acc[0]
 
 
-def train_until_max_found(dataset, testing):
+def train_until_max_found(dataset, testing_data=None):
 	threshold = 72
 	curr, model = 0, None
 	while curr < threshold:

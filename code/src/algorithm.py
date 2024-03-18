@@ -12,31 +12,30 @@ def train_algorithm(tree, n_iters):
 	pass
 
 
-# This is a greedy algorithm
+# This is a greedy algorithm - is this good?	
 def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 	ll_path = []
 	true_ll_path = []
 	for i in range(n_iters):
-		tree_gnn_data = load_tree(tree)
-		_, top = torch.topk(gnn_model(tree_gnn_data.x, tree_gnn_data.edge_index)[:, 0], N_TOP)
-
+		
+		loop = 0
 		candidates = []
-		for item in top:
-			node = next(iter(tree.tree.find_clades(name=tree_gnn_data.node[item.item()])))  # get the clade object
-			candidates += tree.find_action_space(rootNode=node)
+		while candidates == []:
+			candidates = find_candidates(tree, gnn_model, N_TOP+loop)
+			loop += 1
 
 		best_move = None
 		for candidate in candidates:
 			features = get_tree_features(tree, candidate[0], candidate[1])
 			feature_array = torch.Tensor(list(features.values()))
-			score = spr_model(feature_array)
+			score = spr_model(feature_array).item()
 			if best_move and best_move[1] < score:
 				best_move = (candidate, score)
 			else:
 				best_move = (candidate, score)
 
 		tree.perform_spr(best_move[0][0], best_move[0][1])
-		ll_path.append(best_move[1].item())
+		ll_path.append(best_move[1])
 
 		if find_true_ll_path:
 			true_ll_path.append(float(calculate_raxml(tree)["ll"]))
@@ -45,6 +44,20 @@ def run_algorithm(tree, spr_model, gnn_model, n_iters, find_true_ll_path=False):
 		return tree, true_ll_path
 	else:
 		return tree, [0]*n_iters
+
+
+def find_candidates(tree, gnn_model, N_TOP):
+	tree_gnn_data = load_tree(tree)
+	_, top = torch.topk(gnn_model(tree_gnn_data.x, tree_gnn_data.edge_index)[:, 0], N_TOP)
+
+	candidates = []
+	for item in top:
+		node = next(iter(tree.tree.find_clades(name=tree_gnn_data.node[item.item()])))  # get the clade object
+		if node == tree.tree.root or node in tree.tree.root.clades:
+			continue
+		candidates += tree.find_action_space(rootNode=node)
+
+	return candidates
 
 
 def test_algorithm(starting_tree, spr_model, gnn_model):

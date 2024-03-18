@@ -65,7 +65,6 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 		for j in range(len(t)-1):
 			t[j] = (t[j] + training_data["base_ll"][i][j][1]) / 2
 
-	print(t)
 	plt.plot(t)
 	plt.xlabel("Iteration")
 	plt.ylabel("Likelihood")
@@ -174,7 +173,7 @@ def test(args, data=None, models=None):
 #################### NON COMMAND EXECUTABLES ####################
 
 def load_models(args):
-	spr_model = SprScoreFinder(1).double()
+	spr_model = SprScoreFinder(1)
 	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
 	spr_model.eval()
 

@@ -42,14 +42,14 @@ class Tree:
 
 		if rootNode:
 			for item in nodes:
-				if (rootNode == item) or (rootNode in item.clades) or (item in rootNode.clades):
+				if rootNode in self.tree.get_path(item) or item in self.tree.get_path(rootNode):
 					break
 				actionSpace.append((rootNode, item))
 
 		else:
 			for node in nodes:
 				for item in nodes:
-					if (node == item) or (node in item.clades) or (item in node.clades):
+					if node in self.tree.get_path(item) or item in self.tree.get_path(node):
 						break
 					actionSpace.append((node, item))
 
