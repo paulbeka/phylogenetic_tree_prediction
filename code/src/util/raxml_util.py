@@ -13,7 +13,6 @@ def calculate_raxml(tree):
 		with open(tree_rampath, "w") as fpw:
 			fpw.write(tree.tree.format("newick"))
 
-		# TODO: extract the optimal branch lengths
 		# opt-branches on optimizes the branches
 		raxmlProcess = Popen([RAXML_NG_SCRIPT, '--evaluate', '--msa', f"{tree.location}.fasta", '--opt-branches', 'on', '--opt-model', 'off', '--model', "LG", '--nofiles', '--tree', tree_rampath], 
 			stdout=PIPE, stdin=PIPE, stderr=STDOUT)

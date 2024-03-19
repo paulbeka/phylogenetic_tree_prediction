@@ -69,7 +69,7 @@ def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	
 	plt.plot([original_score]*max_n_iters)
 	plt.plot(path)
-	plt.title("Likelihood over time")
+	plt.title("Likelihood over iterations")
 	plt.xlabel("Number of iterations")
 	plt.ylabel("Likelihood")
 	plt.savefig("alg_output")

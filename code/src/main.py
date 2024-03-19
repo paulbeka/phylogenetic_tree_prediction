@@ -92,7 +92,7 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	torch.save(node_model, f"{args.output_dest}/node")
 
 
-def algorithm(args):
+def algorithm(args, testing=False):
 	spr_model, gnn_model, node_model = load_models(args)
 	try:
 		tree = Tree(args.location)
@@ -106,7 +106,41 @@ def algorithm(args):
 	except Exception as e:
 		traceback.print_exc()
 
+	if testing:
+		data_files = find_data_files(os.path.join(BASE_DIR, args.location))
+		n_times = 10
+		original_scores = []
+		avg = [[]]*n_times
+		times = []
+		for file in data_files:
+			tree = Tree(file)
+			original_scores.append(calculate_raxml(tree)["ll"])
+			tree = shuffle_tree(tree, n_times)
+			t0 = time.time()
+			final_tree, path = run_algorithm(tree, spr_model, gnn_model, find_true_ll_path=False)
+			final_time = time.time() - t0
+			times.append(final_time)
+			print(f"Time taken to run: {final_time}")
+			for i, item in enumerate(path):
+				avg[i].append(item)
 
+		avg = [sum(avg[i])/len(avg[i]) for i in range(len(avg))]
+
+		print(f"Final average original score: {sum(original_scores)/len(original_scores):.2f}")
+		print(f"Final average score: {sum(avg[-1])/len(avg[-1]):.2f}")
+		print(f"Average exec time: {sum(times)/len(times):.2f}")
+
+		plt.plot(avg)
+		plt.title("Average likelihood over iterations")
+		plt.xlabel("Number of iterations")
+		plt.ylabel("Average likelihood")
+		plt.savefig("alg_output_avg")
+
+
+
+
+
+# !!!!!!!!!!!! TODO: SPR RAXML-NG TEST BEST MOVE %
 def test(args, data=None, models=None):
 	# TODAY: CHANGE TO 1 SHOT GNN
 	spr_model, gnn_model, node_model = load_models(args)
@@ -285,8 +319,8 @@ def create_dataset(tree,
 	return dataset, gnn_dataset, node_dataset, base_ll
 
 
-def shuffle_tree(tree):
-	for i in range(10):
+def shuffle_tree(tree, n_times):
+	for i in range(n_times):
 		actionSpace = tree.find_action_space()
 		action = random.choice(actionSpace)
 		tree.perform_spr(action[0], action[1], return_parent=True)
