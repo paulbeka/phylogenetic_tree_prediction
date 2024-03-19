@@ -92,32 +92,22 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	torch.save(node_model, f"{args.output_dest}/node")
 
 
-def algorithm(args, testing=False):
+def algorithm(args, testing=True):
 	spr_model, gnn_model, node_model = load_models(args)
-	try:
-		tree = Tree(args.location)
-		original_score = calculate_raxml(tree)["ll"]
-		tree = shuffle_tree(tree)
-		t0 = time.time()
-		final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
-		final_time = time.time() - t0
-		print(f"Time taken to run: {final_time}")
-		return final_time, final_tree
-	except Exception as e:
-		traceback.print_exc()
-
 	if testing:
+		max_n_iters = 50
 		data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 		n_times = 10
 		original_scores = []
-		avg = [[]]*n_times
+		avg = [[]]*max_n_iters
 		times = []
 		for file in data_files:
 			tree = Tree(file)
 			original_scores.append(calculate_raxml(tree)["ll"])
+			# original_scores.append(0)
 			tree = shuffle_tree(tree, n_times)
 			t0 = time.time()
-			final_tree, path = run_algorithm(tree, spr_model, gnn_model, find_true_ll_path=False)
+			final_tree, path = run_algorithm(tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
 			final_time = time.time() - t0
 			times.append(final_time)
 			print(f"Time taken to run: {final_time}")
@@ -127,7 +117,7 @@ def algorithm(args, testing=False):
 		avg = [sum(avg[i])/len(avg[i]) for i in range(len(avg))]
 
 		print(f"Final average original score: {sum(original_scores)/len(original_scores):.2f}")
-		print(f"Final average score: {sum(avg[-1])/len(avg[-1]):.2f}")
+		print(f"Final average score: {avg[-1]:.2f}")
 		print(f"Average exec time: {sum(times)/len(times):.2f}")
 
 		plt.plot(avg)
@@ -136,8 +126,18 @@ def algorithm(args, testing=False):
 		plt.ylabel("Average likelihood")
 		plt.savefig("alg_output_avg")
 
-
-
+	else:
+		try:
+			tree = Tree(args.location)
+			original_score = calculate_raxml(tree)["ll"]
+			tree = shuffle_tree(tree)
+			t0 = time.time()
+			final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
+			final_time = time.time() - t0
+			print(f"Time taken to run: {final_time}")
+			return final_time, final_tree
+		except Exception as e:
+			traceback.print_exc()
 
 
 # !!!!!!!!!!!! TODO: SPR RAXML-NG TEST BEST MOVE %
