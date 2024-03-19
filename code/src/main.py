@@ -99,7 +99,7 @@ def algorithm(args, testing=True):
 		data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 		n_times = 10
 		original_scores = []
-		avg = [[]]*max_n_iters
+		avg = [[] for _ in range(max_n_iters)]
 		times = []
 		for file in data_files:
 			tree = Tree(file)
