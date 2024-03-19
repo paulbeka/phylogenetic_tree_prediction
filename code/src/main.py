@@ -101,9 +101,10 @@ def algorithm(args, testing=True):
 		original_scores = []
 		avg = [[] for _ in range(max_n_iters)]
 		times = []
+		# improvement_scores = []x
 		for file in data_files:
 			tree = Tree(file)
-			original_scores.append(calculate_raxml(tree)["ll"])
+			original_scores.append(float(calculate_raxml(tree)["ll"]))
 			# original_scores.append(0)
 			tree = shuffle_tree(tree, n_times)
 			t0 = time.time()
@@ -111,8 +112,11 @@ def algorithm(args, testing=True):
 			final_time = time.time() - t0
 			times.append(final_time)
 			print(f"Time taken to run: {final_time}")
+
+			# improvement = abs(path[-1] - path[0])
+
 			for i, item in enumerate(path):
-				avg[i].append(item)
+				avg[i].append(abs(path[0] - item))
 
 		avg = [sum(avg[i])/len(avg[i]) for i in range(len(avg))]
 
