@@ -39,15 +39,20 @@ def data_generation(args, returnData=False):
 
 
 def train(args):
+	if not args.output_dest:
+		raise Exception("Please provide output dir.")
+
 	files = find_data_files(os.path.join(BASE_DIR, args.location))
 	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 	testing_data = generate(files[16:], generate_true_ratio=False, generate_node=True)
 
-	# spr_model, acc = train_value_network(training_data["spr"], testing_data["spr"])
+	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+
+	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset)
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
 	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
-	# torch.save(spr_model, f"{args.output_dest}/spr_model")
+	torch.save(spr_model, f"{args.output_dest}/spr_model")
 	torch.save(gnn_model, f"{args.output_dest}/gnn_model")
 	torch.save(node_model, f"{args.output_dest}/node_model")
 		
@@ -304,7 +309,7 @@ def create_dataset(tree,
 			score = prev_raxml_score - raxml_score
 			prev_raxml_score = raxml_score
 
-			dataset.append((treeProperties, score))
+			dataset.append((torch.Tensor(list(treeProperties.values())).double(), torch.Tensor([score]).double()))
 
 
 		else:	# NOTE: NO NODE DATASET IN NON-RAPID MODE. TODO: INTEGRATE THIS 
@@ -327,7 +332,7 @@ def create_dataset(tree,
 				node_data = load_node_data(tree, original_point=original_point, generate_true_ratio=generate_true_ratio)
 				node_dataset += node_data
 			treeProperties = get_tree_features(tree, subtr, original_point)
-			dataset.append((treeProperties, ranking[0][1]))
+			dataset.append((torch.Tensor(list(treeProperties.values())), ranking[0][1]))
 
 	return dataset, gnn_dataset, node_dataset, base_ll
 

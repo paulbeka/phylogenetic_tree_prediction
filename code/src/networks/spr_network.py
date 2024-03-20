@@ -46,8 +46,8 @@ def train_value_network(train_loader, test=None,
 		print(f"Epoch: {epoch+1}/{n_epochs}")
 		for i, (items, labels) in tqdm(enumerate(train_loader), desc="Training: ", total=len(train_loader)):
 
-			outputs = model(items.double())
-			loss = criterion(outputs.double(), labels.unsqueeze(1).double())
+			outputs = model(items)
+			loss = criterion(outputs.double(), labels)
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
@@ -82,15 +82,16 @@ def test_top_10(model, test_dataset):
 
 	with torch.no_grad():
 		for group in test_dataset:
+			group = [(x[0], x[1], i) for i, x in enumerate(group)]
 			group.sort(key=lambda x: x[1])
 			preds = []
 			max_pred = None
 			for item in group:
-				x = model(torch.Tensor(list(item[0].values()))).item()
+				x = model(item[0]).item()
 				if max_pred == None or max_pred[1] < x:
-					max_pred = (item[0], x)
+					max_pred = (item[0], x, item[2])
 
-			if max_pred[0] in [item[0] for item in group[-5:]]:
+			if max_pred[2] in [item[2] for item in group[-5:]]:
 				n_top_10 += 1
 
 	return (n_top_10 / (len(test_dataset)*len(test_dataset[0])))*100
