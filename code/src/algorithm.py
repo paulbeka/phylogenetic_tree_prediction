@@ -74,9 +74,7 @@ def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	plt.ylabel("Likelihood")
 	plt.savefig("alg_output")
 
-	# use raxml-ng to find the same tree and see what it gives
-	# need to feed the original file I think?
-
+	return tree
 
 
 # def train_algorithm_reinforcement_learning(data, spr_model, gnn_model, n_iters):

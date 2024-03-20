@@ -99,6 +99,7 @@ def algorithm(args, testing=True):
 		data_files = find_data_files(os.path.join(BASE_DIR, args.location))
 		n_times = 10
 		original_scores = []
+		starting_scores = []
 		avg = [[] for _ in range(max_n_iters)]
 		times = []
 		# improvement_scores = []x
@@ -107,6 +108,7 @@ def algorithm(args, testing=True):
 			original_scores.append(float(calculate_raxml(tree)["ll"]))
 			# original_scores.append(0)
 			tree = shuffle_tree(tree, n_times)
+			starting_scores.append(float(calculate_raxml(tree)["ll"]))
 			t0 = time.time()
 			final_tree, path = run_algorithm(tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
 			final_time = time.time() - t0
@@ -120,7 +122,8 @@ def algorithm(args, testing=True):
 
 		avg = [sum(avg[i])/len(avg[i]) for i in range(len(avg))]
 
-		print(f"Final average original score: {sum(original_scores)/len(original_scores):.2f}")
+		print(f"Average real score: {sum(original_scores)/len(original_scores):.2f}")
+		print(f"Starting average score: {sum(starting_scores)/len(starting_scores):.2f}")
 		print(f"Final average score: {avg[-1]:.2f}")
 		print(f"Average exec time: {sum(times)/len(times):.2f}")
 
@@ -134,11 +137,16 @@ def algorithm(args, testing=True):
 		try:
 			tree = Tree(args.location)
 			original_score = calculate_raxml(tree)["ll"]
-			tree = shuffle_tree(tree)
+			tree = shuffle_tree(tree, int(len(list(tree.tree.find_clades()))/2))
+			starting_score = calculate_raxml(tree)["ll"]
 			t0 = time.time()
 			final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
 			final_time = time.time() - t0
 			print(f"Time taken to run: {final_time}")
+			final_score = calculate_raxml(final_tree)["ll"]
+			print(f"Original score: {original_score}")
+			print(f"Starting score: {starting_score}")
+			print(f"Final score: {final_score}")
 			return final_time, final_tree
 		except Exception as e:
 			traceback.print_exc()

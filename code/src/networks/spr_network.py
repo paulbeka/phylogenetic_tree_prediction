@@ -76,6 +76,7 @@ def test_value_network(model, test_loader):
 
 # Look at the top move from the set of moves which was done during random walk
 # Avoids having to re-calculate raxml-ng scores for each tree (less compute time)
+# NOTE: IT ACTUALLY LOOKS AT TOP 5, NOT TOP 10!!!
 def test_top_10(model, test_dataset):
 	n_top_10 = 0
 
@@ -93,6 +94,27 @@ def test_top_10(model, test_dataset):
 				n_top_10 += 1
 
 	return (n_top_10 / (len(test_dataset)*len(test_dataset[0])))*100
+
+
+# warning: slow
+# input randomized trees for the test dataset
+def test_top_with_raxml(model, test_dataset):
+	with torch.no_grad():
+		for tree in test_dataset:
+			actionSpace = tree.find_action_space()
+			ranking = []
+			for action in actionSpace:
+				treeCopy = copy.deepcopy(tree)
+				actionCopy = copy.deepcopy(action)
+				
+				model()
+
+				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True, deepcopy=True)
+				try:
+					raxml_score = float(calculate_raxml(treeCopy)["ll"])
+					ranking.append((action, raxml_score))
+				except:
+					raise Exception("Use on computer with raxml-ng!")
 
 
 def compare_score(model, test_loader):
