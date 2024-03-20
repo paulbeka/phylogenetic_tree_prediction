@@ -71,7 +71,7 @@ def find_candidates_with_node_network(tree, node_model, N_TOP):
 
 def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	max_n_iters = 50
-	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=False)
+	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
 	
 	plt.plot([original_score]*max_n_iters)
 	plt.plot(path)

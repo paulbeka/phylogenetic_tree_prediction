@@ -52,9 +52,9 @@ def train(args):
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
 	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
-	torch.save(spr_model, f"{args.output_dest}/spr_model")
-	torch.save(gnn_model, f"{args.output_dest}/gnn_model")
-	torch.save(node_model, f"{args.output_dest}/node_model")
+	torch.save(spr_model, f"{args.output_dest}/spr")
+	torch.save(gnn_model, f"{args.output_dest}/gnn")
+	torch.save(node_model, f"{args.output_dest}/node")
 		
 
 def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
@@ -99,12 +99,11 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	torch.save(node_model, f"{args.output_dest}/node")
 
 
-def algorithm(args, testing=True):
+def algorithm(args, testing=False):
 	spr_model, gnn_model, node_model = load_models(args)
 	if testing:
 		max_n_iters = 50
 		data_files = find_data_files(os.path.join(BASE_DIR, args.location))
-		n_times = 10
 		original_scores = []
 		starting_scores = []
 		avg = [[] for _ in range(max_n_iters)]
@@ -112,12 +111,21 @@ def algorithm(args, testing=True):
 		# improvement_scores = []x
 		for file in data_files:
 			tree = Tree(file)
-			original_scores.append(float(calculate_raxml(tree)["ll"]))
-			# original_scores.append(0)
-			tree = shuffle_tree(tree, n_times)
-			starting_scores.append(float(calculate_raxml(tree)["ll"]))
+
+			if WINDOWS:
+				original_scores.append(0)
+			else:				
+				original_scores.append(float(calculate_raxml(tree)["ll"]))
+
+			tree = shuffle_tree(tree, int(len(list(tree.tree.find_clades()))/2))
+
+			if WINDOWS:
+				starting_scores.append(0)
+			else:				
+				starting_scores.append(float(calculate_raxml(tree)["ll"]))
+
 			t0 = time.time()
-			final_tree, path = run_algorithm(tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
+			final_tree, path = run_algorithm(tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=False)
 			final_time = time.time() - t0
 			times.append(final_time)
 			print(f"Time taken to run: {final_time}")
@@ -143,14 +151,27 @@ def algorithm(args, testing=True):
 	else:
 		try:
 			tree = Tree(args.location)
-			original_score = calculate_raxml(tree)["ll"]
+
+			if WINDOWS:
+				original_score = 0
+			else:				
+				original_score = calculate_raxml(tree)["ll"] 
+
 			tree = shuffle_tree(tree, int(len(list(tree.tree.find_clades()))/2))
-			starting_score = calculate_raxml(tree)["ll"]
+
+			if WINDOWS:
+				starting_score = 0
+			else:				
+				starting_score = calculate_raxml(tree)["ll"]
+
 			t0 = time.time()
 			final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
 			final_time = time.time() - t0
 			print(f"Time taken to run: {final_time}")
-			final_score = calculate_raxml(final_tree)["ll"]
+			if WINDOWS:
+				final_score = 0
+			else:
+				final_score = calculate_raxml(final_tree)["ll"]
 			print(f"Original score: {original_score}")
 			print(f"Starting score: {starting_score}")
 			print(f"Final score: {final_score}")
