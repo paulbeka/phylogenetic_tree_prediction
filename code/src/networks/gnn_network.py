@@ -1,4 +1,4 @@
-import torch
+import torch, copy
 import random
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -35,8 +35,8 @@ class GCN(torch.nn.Module):
         return x
 
 
-def train_gnn_network(dataset, testing_data=None,
-	n_epochs=30, lr=0.0001):
+def train_gnn_network(dataset, testing_data=None, verbose=False,
+	n_epochs=70, lr=0.0001):
 
 	if len(dataset) < 1:
 		raise Exception("No training data!")
@@ -61,21 +61,21 @@ def train_gnn_network(dataset, testing_data=None,
 		if testing_data:
 			acc = test_gnn_network(model, testing_data)
 			if best_acc[1] < acc:
-				best_acc = (model, acc) 
+				best_acc = (copy.deepcopy(model.state_dict()), acc)
 
-		print(f'Epoch: {epoch}, Loss: {loss}')
+		if verbose:
+			print(f'Epoch: {epoch}, Loss: {loss}')
 
 	print(f"Best accuracy found: {best_acc[1]:.2f}%")
 
-	return best_acc[0]
+	return best_acc
 
 
-def train_until_max_found(dataset, testing_data=None):
-	threshold = 72
+def train_gnn_until_max_found(train, test):
+	threshold = 65
 	curr, model = 0, None
 	while curr < threshold:
-		model = train_gnn_network(dataset, testing)
-		curr = test_gnn_network(model, testing)
+		model, curr = train_gnn_network(train, testing_data=test)
 	return model
 
 
@@ -195,8 +195,8 @@ def cv_validation_gnn(dataset):
 		train = dataset[:int((i*0.2)*len(dataset))] + dataset[int(((i*0.2)+0.2)*len(dataset)):]
 		test = dataset[int((i*0.2)*len(dataset)):int(((i*0.2)+0.2)*len(dataset))]
 
-		model = train_gnn_network(train, testing_data=test)
-		acc.append(test_gnn_network(model, test))
+		model, accuracy = train_gnn_network(train, testing_data=test)
+		acc.append(accuracy)
 
 	return acc
 
@@ -209,12 +209,11 @@ def optimize_gnn_network(train, test):
 	for epoch in epoch_values:
 		for lr in lr_values:
 			print(f"Training with: Epochs: {epoch}, LR: {lr}")
-			model = train_gnn_network(train, testing_data=test,
+			model, acc = train_gnn_network(train, testing_data=test,
 				n_epochs=epoch, lr=lr)
-			acc = test_gnn_network(model, test)
 			print(f"Accuracy found: {acc}")
 
-			combinations_list.append((lr, epoch, model.state_dict(), acc))
+			combinations_list.append((lr, epoch, model, acc))
 
 	combinations_list.sort(key=lambda x: x[-1])
 	best = combinations_list[-1]

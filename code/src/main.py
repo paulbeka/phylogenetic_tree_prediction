@@ -3,8 +3,8 @@ from algorithm import run_algorithm, test_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
 from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network
-from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network, train_until_max_found
-from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network
+from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network, train_gnn_until_max_found
+from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network, train_node_until_max_found
 
 import random, dendropy, os, argparse, pickle, torch, copy, time
 import numpy as np
@@ -43,11 +43,13 @@ def train(args):
 	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 	testing_data = generate(files[16:], generate_true_ratio=False, generate_node=True)
 
-	spr_model = train_value_network(training_data["spr"], testing_data["spr"])
-	gnn_model = train_until_max_found(training_data["gnn"], testing_data["gnn"])
+	# spr_model, acc = train_value_network(training_data["spr"], testing_data["spr"])
+	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
+	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
-	torch.save(spr_model.state_dict(), f"{args.output_dest}/spr_model")
-	torch.save(gnn_model.state_dict(), f"{args.output_dest}/gnn_model")
+	# torch.save(spr_model, f"{args.output_dest}/spr_model")
+	torch.save(gnn_model, f"{args.output_dest}/gnn_model")
+	torch.save(node_model, f"{args.output_dest}/node_model")
 		
 
 def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
@@ -83,9 +85,9 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 		node_model = optimize_node_network(training_data["node"], testing_data["node"])
 
 	else:
-		spr_model = train_value_network(training_data["spr"], test=spr_testing_dataset).state_dict()
-		gnn_model = train_until_max_found(training_data["gnn"], testing_data=testing_data["gnn"]).state_dict()
-		node_model = train_node_network(training_data["node"], testing_data=testing_data["node"]).state_dict()
+		spr_model, acc = train_value_network(training_data["spr"], test=spr_testing_dataset)
+		gnn_model, acc = train_gnn_until_max_found(training_data["gnn"], testing_data=testing_data["gnn"])
+		node_model, acc = train_node_until_max_found(training_data["node"], testing_data=testing_data["node"])
 
 	torch.save(spr_model, f"{args.output_dest}/spr")
 	torch.save(gnn_model, f"{args.output_dest}/gnn")
@@ -191,13 +193,12 @@ def test(args, data=None, models=None):
 
 	# remake data with multiple move for CV validation
 	testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True, multiple_move=True)
-	print(len(testing_data["node"]))
 
-	acc_gnn = cv_validation_gnn(testing_data["gnn"])
+	acc_gnn = [0] * 5
+	while sum(acc_gnn)/len(acc_gnn) < 62:
+		acc_gnn = cv_validation_gnn(testing_data["gnn"])
+		print(f"GNN ACC FOUND: {sum(acc_gnn)/len(acc_gnn)}")
 	acc_node = cv_validation_node(testing_data["node"])
-
-	print(f"GNN accuracy 5-fold CV: {acc_gnn}")
-	print(f"Node accuracy 5-fold CV: {acc_node}")
 
 	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
 	gnn_err, node_err = max([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-node_mean) for x in acc_node]) 

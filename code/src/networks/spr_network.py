@@ -55,9 +55,9 @@ def train_value_network(train_loader, test=None,
 		if test:
 			loss = test_top_10(model, test)
 			if loss < best_model[1]:
-				best_model = (model, loss)
+				best_model = (copy.deepcopy(model.state_dict()), loss)
 
-	return best_model[0]
+	return best_model
 
 
 def test_value_network(model, test_loader):
@@ -86,7 +86,7 @@ def test_top_10(model, test_dataset):
 			preds = []
 			max_pred = None
 			for item in group:
-				x = model(torch.Tensor(list(item[0].values())).double()).item()
+				x = model(torch.Tensor(list(item[0].values()))).item()
 				if max_pred == None or max_pred[1] < x:
 					max_pred = (item[0], x)
 
@@ -98,6 +98,7 @@ def test_top_10(model, test_dataset):
 
 # warning: slow
 # input randomized trees for the test dataset
+# FINISH THIS CODE
 def test_top_with_raxml(model, test_dataset):
 	with torch.no_grad():
 		for tree in test_dataset:
@@ -107,7 +108,7 @@ def test_top_with_raxml(model, test_dataset):
 				treeCopy = copy.deepcopy(tree)
 				actionCopy = copy.deepcopy(action)
 				
-				model()
+				model() # ERROR
 
 				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True, deepcopy=True)
 				try:
@@ -182,12 +183,11 @@ def optimize_spr_network(train, test):
 		for lr in lr_values:
 			for batch_size in batch_values:
 				print(f"Training with: Epochs: {epoch}, LR: {lr}, Batch Size: {batch_size}")
-				model = train_value_network(train, test=test,
+				model, acc = train_value_network(train, test=test,
 					n_epochs=epoch, batch_size=batch_size, lr=lr)
-				acc = test_top_10(model, test)
 				print(f"Accuracy found: {acc}")
 
-				combinations_list.append((batch_size, lr, epoch, model.state_dict(), acc))
+				combinations_list.append((batch_size, lr, epoch, model, acc))
 
 	combinations_list.sort(key=lambda x: x[-1])
 	best = combinations_list[-1]

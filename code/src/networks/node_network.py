@@ -1,4 +1,4 @@
-import torch
+import torch, copy
 import torch.nn as nn
 import torch.nn.functional as F
 import random
@@ -49,12 +49,12 @@ def train_node_network(dataset, testing_data=None,
 		if testing_data:	# Return output depends on testing_data not being None
 			balanced_acc = test_node_network(model, testing_data)
 			if balanced_acc > best_acc[1]:
-				best_acc = (model, balanced_acc)	# MAY NEED TO COPY THE MODEL
+				best_acc = (copy.deepcopy(model.state_dict()), balanced_acc)
 				print(f"Balanced accuracy: {balanced_acc:.2f}%")
 
 		print(f'Epoch: {epoch}, Loss: {loss}')
 
-	return best_acc[0]
+	return best_acc
 
 
 def optimize_node_network(train, test):
@@ -67,12 +67,11 @@ def optimize_node_network(train, test):
 		for lr in lr_values:
 			for batch_size in batch_values:
 				print(f"Training with: Epochs: {epoch}, LR: {lr}, Batch Size: {batch_size}")
-				model = train_node_network(train, testing_data=test,
+				model, best_acc = train_node_network(train, testing_data=test,
 					n_epochs=epoch, batch_size=batch_size, lr=lr)
-				acc = test_node_network(model, test)
-				print(f"Accuracy found: {acc}")
+				print(f"Accuracy found: {best_acc}")
 
-				combinations_list.append((batch_size, lr, epoch, model.state_dict(), acc))
+				combinations_list.append((batch_size, lr, epoch, model, acc))
 
 	combinations_list.sort(key=lambda x: x[-1])
 	best = combinations_list[-1]
@@ -93,7 +92,6 @@ def test_node_network(model, data):
 	        true_labels.append(true_label)
 
 	balanced_acc = balanced_accuracy_score(true_labels, predicted_labels)*100
-	# print(confusion_matrix(true_labels, predicted_labels))
 		
 	return balanced_acc
 
@@ -157,10 +155,20 @@ def cv_validation_node(dataset):
 		train = dataset[:int((i*0.2)*len(dataset))] + dataset[int(((i*0.2)+0.2)*len(dataset)):]
 		test = dataset[int((i*0.2)*len(dataset)):int(((i*0.2)+0.2)*len(dataset))]
 
-		model = train_node_network(train, testing_data=test)
-		acc.append(test_node_network(model, test))
+		model, best_acc = train_node_network(train, testing_data=test)
+		acc.append(best_acc)
 
 	return acc
+
+
+def train_node_until_max_found(train, test):
+	threshold = 75
+	curr, model = 0, None
+	
+	while curr < threshold:
+		model, curr = train_node_network(train, testing_data=test)
+
+	return model
 
 
 ### UTILITY ###

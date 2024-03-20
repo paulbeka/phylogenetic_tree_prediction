@@ -63,6 +63,12 @@ def find_candidates(tree, gnn_model, N_TOP):
 	return candidates
 
 
+def find_candidates_with_node_network(tree, node_model, N_TOP):
+	data = load_node_data(tree, generate_true_ratio=True)
+	scored = [node_model(x[0]).item() for x in data]
+	# scored.
+
+
 def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	max_n_iters = 50
 	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=False)
