@@ -46,7 +46,9 @@ def train(args):
 	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 	testing_data = generate(files[16:], generate_true_ratio=False, generate_node=True)
 
-	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+	# spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+	spr_raxml_top_testing_data = [Tree(file) for file in files]
+	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
 
 	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset)
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
@@ -182,7 +184,6 @@ def algorithm(args, testing=False):
 			traceback.print_exc()
 
 
-# !!!!!!!!!!!! TODO: SPR RAXML-NG TEST BEST MOVE %
 def test(args, data=None, models=None):
 	# TODAY: CHANGE TO 1 SHOT GNN
 	spr_model, gnn_model, node_model = load_models(args)
@@ -193,13 +194,16 @@ def test(args, data=None, models=None):
 		n_items_random_walk = 40
 		files = find_data_files(os.path.join(BASE_DIR, args.location))
 		testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True, multiple_move=False)
-		spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+		# spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	
+	spr_raxml_top_testing_data = [Tree(file) for file in files]
+	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
+
 	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset)
 	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
-	# print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
+	print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
 
 	gnn_preds, gnn_true = [], []
 	node_preds, node_true = [], []

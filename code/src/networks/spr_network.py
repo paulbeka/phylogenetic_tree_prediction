@@ -99,7 +99,6 @@ def test_top_10(model, test_dataset):
 
 # warning: slow
 # input randomized trees for the test dataset
-# FINISH THIS CODE
 def test_top_with_raxml(model, test_dataset):
 	average = []
 	with torch.no_grad():
@@ -109,18 +108,18 @@ def test_top_with_raxml(model, test_dataset):
 			true_ranking = []
 			model_ranking = []
 			for action in actionSpace:
-				treeCopy = copy.deepcopy(tree)
-				actionCopy = copy.deepcopy(action)
-				
-				features = get_tree_features(treeCopy, actionCopy[0], actionCopy[1])
-				feature_array = torch.Tensor(list(features.values()))
+				# no need for deepcopy on features
+				features = get_tree_features(tree, action[0], action[1])
+				feature_array = torch.Tensor(list(features.values())).double()
 				score = model(feature_array).item()
 				model_ranking.append((action, score))
 
+				treeCopy = copy.deepcopy(tree)
+				actionCopy = copy.deepcopy(action)
 				treeCopy.perform_spr(actionCopy[0], actionCopy[1], deepcopy=True)
-				
 				try:
 					raxml_score = float(calculate_raxml(treeCopy)["ll"])
+					# raxml_score = 0
 					true_ranking.append((action, raxml_score))
 				except:
 					raise Exception("Use on computer with raxml-ng!")
@@ -131,14 +130,15 @@ def test_top_with_raxml(model, test_dataset):
 			top_true = [x[0] for x in true_ranking[-5:]]
 			top_model = [x[0] for x in model_ranking[-5:]]
 
-			print(top_true, top_model)
 			for item in top_model:
 				if item in top_true:
 					n_top += 1
 
 			average.append(n_top / len(top_model))
 
-		return (sum(average) / len(average))*100
+		acc = (sum(average) / len(average))*100
+		print(f"SPR score found: {acc:.2f}%")
+		return acc
 
 
 def compare_score(model, test_loader):
