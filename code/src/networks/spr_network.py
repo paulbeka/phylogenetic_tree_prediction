@@ -16,10 +16,10 @@ class SprScoreFinder(nn.Module):
 	def __init__(self, batch_size):
 		super(SprScoreFinder, self).__init__()
 		
-		self.firstLayer = nn.Linear(6, 20)
-		self.secondLayer = nn.Linear(20, 20)
-		self.thirdLayer = nn.Linear(20, 10)
-		self.finalLayer = nn.Linear(10, 1)
+		self.firstLayer = nn.Linear(6, 10)
+		self.secondLayer = nn.Linear(10, 10)
+		self.thirdLayer = nn.Linear(10, 5)
+		self.finalLayer = nn.Linear(5, 1)
 
 		self.silu = nn.SiLU()
 

@@ -18,9 +18,9 @@ class GCN(torch.nn.Module):
     def __init__(self, hidden_channels=32):
         super(GCN, self).__init__()
         self.conv1 = GCNConv(22, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, 10)
-        self.linear1 = Linear(10, 5)
-        self.linear2 = Linear(5, 2)
+        self.conv2 = GCNConv(hidden_channels, 20)
+        self.linear1 = Linear(20, 10)
+        self.linear2 = Linear(10, 2)
 
 
     def forward(self, x, edge_index):
