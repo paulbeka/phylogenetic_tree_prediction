@@ -53,7 +53,7 @@ def train_value_network(train_loader, test=None,
 			optimizer.step()
 
 		if test:
-			loss = test_top_10(model, test)
+			loss = test_top_with_raxml(model, test)
 			if loss < best_model[1]:
 				best_model = (copy.deepcopy(model.state_dict()), loss)
 
@@ -101,22 +101,44 @@ def test_top_10(model, test_dataset):
 # input randomized trees for the test dataset
 # FINISH THIS CODE
 def test_top_with_raxml(model, test_dataset):
+	average = []
 	with torch.no_grad():
 		for tree in test_dataset:
+			n_top = 0
 			actionSpace = tree.find_action_space()
-			ranking = []
+			true_ranking = []
+			model_ranking = []
 			for action in actionSpace:
 				treeCopy = copy.deepcopy(tree)
 				actionCopy = copy.deepcopy(action)
 				
-				model() # ERROR
+				features = get_tree_features(treeCopy, actionCopy[0], actionCopy[1])
+				feature_array = torch.Tensor(list(features.values()))
+				score = model(feature_array).item()
+				model_ranking.append((action, score))
 
-				original_point = treeCopy.perform_spr(actionCopy[0], actionCopy[1], return_parent=True, deepcopy=True)
+				treeCopy.perform_spr(actionCopy[0], actionCopy[1], deepcopy=True)
+				
 				try:
 					raxml_score = float(calculate_raxml(treeCopy)["ll"])
-					ranking.append((action, raxml_score))
+					true_ranking.append((action, raxml_score))
 				except:
 					raise Exception("Use on computer with raxml-ng!")
+
+			true_ranking.sort(key=lambda x: x[1])
+			model_ranking.sort(key=lambda x: x[1])
+			
+			top_true = [x[0] for x in true_ranking[-5:]]
+			top_model = [x[0] for x in model_ranking[-5:]]
+
+			print(top_true, top_model)
+			for item in top_model:
+				if item in top_true:
+					n_top += 1
+
+			average.append(n_top / len(top_model))
+
+		return (sum(average) / len(average))*100
 
 
 def compare_score(model, test_loader):
