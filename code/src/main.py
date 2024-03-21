@@ -201,7 +201,7 @@ def test(args, data=None, models=None):
 	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
 	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr=generated_spr)
+	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr)
 	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
