@@ -25,7 +25,6 @@ class SprScoreFinder(nn.Module):
 	def forward(self, x):
 		x = self.silu(self.firstLayer(x))
 		x = self.silu(self.secondLayer(x))
-		x = self.silu(self.thirdLayer(x))
 		x = self.finalLayer(x)
 		return x
 
