@@ -69,9 +69,9 @@ def find_candidates_with_node_network(tree, node_model, N_TOP):
 	# scored.
 
 
-def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
+def test_algorithm(starting_tree, original_score, spr_model, gnn_model, path=False):
 	max_n_iters = 50
-	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=True)
+	tree, path = run_algorithm(starting_tree, spr_model, gnn_model, max_n_iters, find_true_ll_path=path)
 	
 	plt.plot([original_score]*max_n_iters)
 	plt.plot(path)
@@ -80,7 +80,7 @@ def test_algorithm(starting_tree, original_score, spr_model, gnn_model):
 	plt.ylabel("Likelihood")
 	plt.savefig("alg_output")
 
-	return tree
+	return tree, path
 
 
 # def train_algorithm_reinforcement_learning(data, spr_model, gnn_model, n_iters):

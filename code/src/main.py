@@ -165,13 +165,15 @@ def algorithm(args, testing=False):
 				starting_score = calculate_raxml(tree)["ll"]
 
 			t0 = time.time()
-			final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
-			final_time = time.time() - t0
-			print(f"Time taken to run: {final_time}")
 			if WINDOWS:
+				final_tree = test_algorithm(tree, original_score, spr_model, gnn_model)
 				final_score = 0
 			else:
-				final_score = calculate_raxml(final_tree)["ll"]
+				final_tree, path = test_algorithm(tree, original_score, spr_model, gnn_model, path=True)
+				final_score = path[-1]
+
+			final_time = time.time() - t0
+			print(f"Time taken to run: {final_time}")
 			print(f"Original score: {original_score}")
 			print(f"Starting score: {starting_score}")
 			print(f"Final score: {final_score}")
