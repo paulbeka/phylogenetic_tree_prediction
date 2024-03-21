@@ -18,8 +18,7 @@ class SprScoreFinder(nn.Module):
 		
 		self.firstLayer = nn.Linear(6, 10)
 		self.secondLayer = nn.Linear(10, 10)
-		self.thirdLayer = nn.Linear(10, 5)
-		self.finalLayer = nn.Linear(5, 1)
+		self.finalLayer = nn.Linear(10, 1)
 
 		self.silu = nn.SiLU()
 
@@ -32,7 +31,7 @@ class SprScoreFinder(nn.Module):
 
 
 def train_value_network(train_loader, test=None, generated_spr=None,
-	n_epochs=500, batch_size=1, lr=0.0001):
+	n_epochs=75, batch_size=1, lr=0.0001):
 
 	model =  SprScoreFinder(batch_size).double()
 
@@ -100,6 +99,7 @@ def test_top_10(model, test_dataset):
 # warning: slow
 # input randomized trees for the test dataset
 def test_top_with_raxml(model, test_dataset, generated_raxml_vals):
+	n_top = 10
 	average = []
 	with torch.no_grad():
 		for i, tree in enumerate(test_dataset):
@@ -115,8 +115,8 @@ def test_top_with_raxml(model, test_dataset, generated_raxml_vals):
 
 			model_ranking.sort(key=lambda x: x[1])
 			
-			top_true = [x[0] for x in generated_raxml_vals[i][-5:]]
-			top_model = [x[0] for x in model_ranking[-5:]]
+			top_true = [x[0] for x in generated_raxml_vals[i][-n_top:]]
+			top_model = [x[0] for x in model_ranking[-n_top:]]
 
 			for item in top_model:
 				if item in top_true:
