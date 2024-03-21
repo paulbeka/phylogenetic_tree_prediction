@@ -2,7 +2,7 @@ from get_tree_features import get_tree_features
 from algorithm import run_algorithm, test_algorithm
 from util.tree_manager import Tree, randomize_tree
 from util.raxml_util import calculate_raxml
-from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network, test_top_with_raxml
+from networks.spr_network import SprScoreFinder, get_dataloader, train_value_network, test_value_network, test_model_ll_increase, compare_score, test_top_10, optimize_spr_network, test_top_with_raxml, generate_top_raxml_test_dataset
 from networks.gnn_network import load_tree, train_gnn_network, test_gnn_network, GCN, gnn_test_top_10, cv_validation_gnn, optimize_gnn_network, train_gnn_until_max_found
 from networks.node_network import train_node_network, load_node_data, test_node_network, cv_validation_node, NodeNetwork, optimize_node_network, train_node_until_max_found
 
@@ -49,8 +49,9 @@ def train(args):
 	# spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 	spr_raxml_top_testing_data = [Tree(file) for file in files]
 	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
+	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset)
+	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
 	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
@@ -198,8 +199,9 @@ def test(args, data=None, models=None):
 	
 	spr_raxml_top_testing_data = [Tree(file) for file in files]
 	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
+	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset)
+	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr=generated_spr)
 	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")

@@ -31,8 +31,8 @@ class SprScoreFinder(nn.Module):
 		return x
 
 
-def train_value_network(train_loader, test=None,
-	n_epochs=10, batch_size=1, lr=0.0001):
+def train_value_network(train_loader, test=None, generated_spr=None,
+	n_epochs=500, batch_size=1, lr=0.0001):
 
 	model =  SprScoreFinder(batch_size).double()
 
@@ -53,7 +53,7 @@ def train_value_network(train_loader, test=None,
 			optimizer.step()
 
 		if test:
-			loss = test_top_with_raxml(model, test)
+			loss = test_top_with_raxml(model, test, generated_spr)
 			if loss < best_model[1]:
 				best_model = (copy.deepcopy(model.state_dict()), loss)
 
@@ -99,13 +99,12 @@ def test_top_10(model, test_dataset):
 
 # warning: slow
 # input randomized trees for the test dataset
-def test_top_with_raxml(model, test_dataset):
+def test_top_with_raxml(model, test_dataset, generated_raxml_vals):
 	average = []
 	with torch.no_grad():
-		for tree in test_dataset:
+		for i, tree in enumerate(test_dataset):
 			n_top = 0
 			actionSpace = tree.find_action_space()
-			true_ranking = []
 			model_ranking = []
 			for action in actionSpace:
 				# no need for deepcopy on features
@@ -114,20 +113,9 @@ def test_top_with_raxml(model, test_dataset):
 				score = model(feature_array).item()
 				model_ranking.append((action, score))
 
-				treeCopy = copy.deepcopy(tree)
-				actionCopy = copy.deepcopy(action)
-				treeCopy.perform_spr(actionCopy[0], actionCopy[1], deepcopy=True)
-				try:
-					raxml_score = float(calculate_raxml(treeCopy)["ll"])
-					# raxml_score = 0
-					true_ranking.append((action, raxml_score))
-				except:
-					raise Exception("Use on computer with raxml-ng!")
-
-			true_ranking.sort(key=lambda x: x[1])
 			model_ranking.sort(key=lambda x: x[1])
 			
-			top_true = [x[0] for x in true_ranking[-5:]]
+			top_true = [x[0] for x in generated_raxml_vals[i][-5:]]
 			top_model = [x[0] for x in model_ranking[-5:]]
 
 			for item in top_model:
@@ -139,6 +127,28 @@ def test_top_with_raxml(model, test_dataset):
 		acc = (sum(average) / len(average))*100
 		print(f"SPR score found: {acc:.2f}%")
 		return acc
+
+
+def generate_top_raxml_test_dataset(test_dataset):
+	true_ranking = []
+	for tree in test_dataset:
+		actionSpace = tree.find_action_space()
+		true_ranking_temp = []
+		for action in actionSpace:
+			treeCopy = copy.deepcopy(tree)
+			actionCopy = copy.deepcopy(action)
+			treeCopy.perform_spr(actionCopy[0], actionCopy[1], deepcopy=True)
+			try:
+				raxml_score = float(calculate_raxml(treeCopy)["ll"])
+				# raxml_score = 0
+				true_ranking_temp.append((action, raxml_score))
+			except:
+				raise Exception("Use on computer with raxml-ng!")
+		
+		true_ranking_temp.sort(key=lambda x: x[1])
+		true_ranking.append(true_ranking_temp)
+
+	return true_ranking
 
 
 def compare_score(model, test_loader):
