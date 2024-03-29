@@ -54,7 +54,7 @@ def train(args):
 	accs = []
 	for _ in range(10):
 		spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
-		accs += acc
+		accs.append(acc)
 
 	print(sum(accs)/10)
 	print(accs)
@@ -240,10 +240,11 @@ def test(args, data=None, models=None):
 	acc_node = cv_validation_node(testing_data["node"])
 
 	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
-	gnn_err, node_err = max([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-node_mean) for x in acc_node]) 
+	gnn_err, node_err = (min([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-gnn_mean) for x in acc_gnn])),
+						(min([abs(x-node_mean) for x in acc_node]), max([abs(x-node_mean) for x in acc_node]))
 
 	plt.figure(figsize=(8, 6))
-	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[gnn_err, node_err], color=['blue', 'red'], capsize=5)
+	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[(gnn_err), (node_err)], color=['blue', 'red'], capsize=5)
 	plt.ylabel('Balanced accuracy')
 	plt.title('Performance Comparison') 
 	plt.xticks(rotation=45)
