@@ -240,8 +240,7 @@ def test(args, data=None, models=None):
 	acc_node = cv_validation_node(testing_data["node"])
 
 	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
-	gnn_err, node_err = (min([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-gnn_mean) for x in acc_gnn])),
-						(min([abs(x-node_mean) for x in acc_node]), max([abs(x-node_mean) for x in acc_node]))
+	gnn_err, node_err = (min([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-gnn_mean) for x in acc_gnn])), (min([abs(x-node_mean) for x in acc_node]), max([abs(x-node_mean) for x in acc_node]))
 
 	plt.figure(figsize=(8, 6))
 	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[(gnn_err), (node_err)], color=['blue', 'red'], capsize=5)
