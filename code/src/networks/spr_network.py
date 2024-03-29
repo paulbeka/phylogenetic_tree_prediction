@@ -16,8 +16,9 @@ class SprScoreFinder(nn.Module):
 	def __init__(self, batch_size):
 		super(SprScoreFinder, self).__init__()
 		
-		self.firstLayer = nn.Linear(6, 10)
-		self.secondLayer = nn.Linear(10, 10)
+		self.firstLayer = nn.Linear(6, 20)
+		self.secondLayer = nn.Linear(20, 20)
+		self.thirdLayer = nn.Linear(20, 10)
 		self.finalLayer = nn.Linear(10, 1)
 
 		self.silu = nn.SiLU()
@@ -25,6 +26,7 @@ class SprScoreFinder(nn.Module):
 	def forward(self, x):
 		x = self.silu(self.firstLayer(x))
 		x = self.silu(self.secondLayer(x))
+		x = self.silu(self.thirdLayer(x))
 		x = self.finalLayer(x)
 		return x
 
@@ -102,7 +104,7 @@ def test_top_with_raxml(model, test_dataset, generated_raxml_vals):
 	average = []
 	with torch.no_grad():
 		for i, tree in enumerate(test_dataset):
-			n_top = 0
+			n_found = 0
 			actionSpace = tree.find_action_space()
 			model_ranking = []
 			for action in actionSpace:
@@ -119,9 +121,9 @@ def test_top_with_raxml(model, test_dataset, generated_raxml_vals):
 
 			for item in top_model:
 				if item in top_true:
-					n_top += 1
+					n_found += 1
 
-			average.append(n_top / len(top_model))
+			average.append(n_found / n_top)
 
 		acc = (sum(average) / len(average))*100
 		print(f"SPR score found: {acc:.2f}%")

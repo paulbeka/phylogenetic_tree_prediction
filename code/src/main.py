@@ -202,10 +202,8 @@ def test(args, data=None, models=None):
 	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
 	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr)
-	gnn_top_10 = gnn_test_top_10(gnn_model, testing_data["gnn"])
 
 	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
-	print(f"GNN percentage in top 10: {gnn_top_10*100:.2f}%")
 
 	gnn_preds, gnn_true = [], []
 	node_preds, node_true = [], []
