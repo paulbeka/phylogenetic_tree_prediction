@@ -54,7 +54,7 @@ def train_value_network(train_loader, test=None, generated_spr=None,
 
 		if test:
 			loss = test_top_with_raxml(model, test, generated_spr)
-			if loss < best_model[1]:
+			if loss > best_model[1]:
 				best_model = (copy.deepcopy(model.state_dict()), loss)
 
 	return best_model
@@ -65,9 +65,13 @@ def test_value_network(model, test_loader):
 	with torch.no_grad():
 		test_loss = 0
 		for configs, labels in test_loader:
-			outputs = model(configs.double())
+			for x in item:
+				action = x[0]
+				features = get_tree_features(tree, action[0], action[1])
+				feature_array = torch.Tensor(list(features.values())).double()
+				score = model(feature_array).item()
 
-			test_loss += criterion(outputs, labels.unsqueeze(1))
+				test_loss += criterion(x[1], score)
 
 		print(f"Total loss: {test_loss / len(test_loader)}")
 	

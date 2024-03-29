@@ -46,23 +46,23 @@ def train(args):
 	training_data = generate(files[:16], generate_true_ratio=False, generate_node=True)
 	testing_data = generate(files[16:], generate_true_ratio=False, generate_node=True)
 
-	# spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
-	spr_raxml_top_testing_data = [Tree(file) for file in files]
-	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
-	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
+	# # spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
+	# spr_raxml_top_testing_data = [Tree(file) for file in files]
+	# spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
+	# generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	accs = []
-	for _ in range(10):
-		spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
-		accs.append(acc)
+	# accs = []
+	# for _ in range(10):
+	# 	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
+	# 	accs.append(acc)
 
-	print(sum(accs)/10)
-	print(accs)
-	return
+	# print(sum(accs)/10)
+	# print(accs)
+	# return
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
 	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
-	torch.save(spr_model, f"{args.output_dest}/spr")
+	# torch.save(spr_model, f"{args.output_dest}/spr")
 	torch.save(gnn_model, f"{args.output_dest}/gnn")
 	torch.save(node_model, f"{args.output_dest}/node")
 		
@@ -194,7 +194,8 @@ def algorithm(args, testing=False):
 
 def test(args, data=None, models=None):
 	# TODAY: CHANGE TO 1 SHOT GNN
-	spr_model, gnn_model, node_model = load_models(args)
+	# spr_model, gnn_model, node_model = load_models(args)
+	gnn_model, node_model = load_models(args)
 
 	if args.data:
 		pass # Open the file with the large datasets here
@@ -208,9 +209,11 @@ def test(args, data=None, models=None):
 	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
 	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr)
+	# spr_top_10 = test_top_with_raxml(spr_model, spr_testing_dataset, generated_spr)
 
-	print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
+	# print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
+
+	print(test_value_network(spr_model, generated_spr))
 
 	gnn_preds, gnn_true = [], []
 	node_preds, node_true = [], []
@@ -233,17 +236,14 @@ def test(args, data=None, models=None):
 	# remake data with multiple move for CV validation
 	testing_data = generate(files, n_items_random_walk=n_items_random_walk, generate_node=True, multiple_move=True)
 
-	acc_gnn = [0] * 5
-	while sum(acc_gnn)/len(acc_gnn) < 62:
-		acc_gnn = cv_validation_gnn(testing_data["gnn"])
-		print(f"GNN ACC FOUND: {sum(acc_gnn)/len(acc_gnn)}")
+	acc_gnn = cv_validation_gnn(testing_data["gnn"])
 	acc_node = cv_validation_node(testing_data["node"])
 
 	gnn_mean, node_mean = sum(acc_gnn)/len(acc_gnn), sum(acc_node)/len(acc_node)
 	gnn_err, node_err = (min([abs(x-gnn_mean) for x in acc_gnn]), max([abs(x-gnn_mean) for x in acc_gnn])), (min([abs(x-node_mean) for x in acc_node]), max([abs(x-node_mean) for x in acc_node]))
 
 	plt.figure(figsize=(8, 6))
-	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[(gnn_err), (node_err)], color=['blue', 'red'], capsize=5)
+	bars = plt.bar(["GNN", "Node"], [gnn_mean, node_mean], yerr=[gnn_err, node_err], color=['blue', 'red'], capsize=5)
 	plt.ylabel('Balanced accuracy')
 	plt.title('Performance Comparison') 
 	plt.xticks(rotation=45)
@@ -260,9 +260,9 @@ def test(args, data=None, models=None):
 #################### NON COMMAND EXECUTABLES ####################
 
 def load_models(args):
-	spr_model = SprScoreFinder(1)
-	spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
-	spr_model.eval()
+	# spr_model = SprScoreFinder(1)
+	# spr_model.load_state_dict(torch.load(f"{args.networks_location}/spr"))
+	# spr_model.eval()
 
 	gnn_model = GCN()
 	gnn_model.load_state_dict(torch.load(f"{args.networks_location}/gnn"))
@@ -272,7 +272,8 @@ def load_models(args):
 	node_model.load_state_dict(torch.load(f"{args.networks_location}/node"))
 	node_model.eval()
 
-	return spr_model, gnn_model, node_model
+	# return spr_model, gnn_model, node_model
+	return gnn_model, node_model
 
 
 # TODO: add option for gnn 1 move or regular

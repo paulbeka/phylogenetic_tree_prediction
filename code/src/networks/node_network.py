@@ -162,7 +162,7 @@ def cv_validation_node(dataset):
 
 
 def train_node_until_max_found(train, test):
-	threshold = 72
+	threshold = 70
 	curr, model = 0, None
 	
 	while curr < threshold:
