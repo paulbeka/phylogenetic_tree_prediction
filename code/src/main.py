@@ -51,7 +51,14 @@ def train(args):
 	spr_testing_dataset = [shuffle_tree(x, int(len(list(x.tree.root.find_clades()))/2)) for x in spr_raxml_top_testing_data]
 	generated_spr = generate_top_raxml_test_dataset(spr_testing_dataset)
 
-	spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
+	accs = []
+	for _ in range(10):
+		spr_model, acc = train_value_network(training_data["spr"], spr_testing_dataset, generated_spr=generated_spr)
+		accs += acc
+
+	print(sum(accs)/10)
+	print(accs)
+	return
 	gnn_model = train_gnn_until_max_found(training_data["gnn"], testing_data["gnn"])
 	node_model = train_node_until_max_found(training_data["node"], testing_data["node"])
 
