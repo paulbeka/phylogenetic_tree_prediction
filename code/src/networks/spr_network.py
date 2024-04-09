@@ -60,12 +60,13 @@ def train_value_network(train_loader, test=None, generated_spr=None,
 	return best_model
 
 
-def test_value_network(model, test_loader):
+def test_value_network(model, spr_testing_dataset, test_loader):
 	criterion = nn.MSELoss()
 	with torch.no_grad():
 		test_loss = 0
-		for configs, labels in test_loader:
+		for i, item in enumerate(test_loader):
 			for x in item:
+				tree = spr_testing_dataset[i]
 				action = x[0]
 				features = get_tree_features(tree, action[0], action[1])
 				feature_array = torch.Tensor(list(features.values())).double()
@@ -75,7 +76,8 @@ def test_value_network(model, test_loader):
 
 		print(f"Total loss: {test_loss / len(test_loader)}")
 	
-	return test_loss / len(test_loader)	
+	
+	return test_loss / sum([len(item) for item in test_loader])	
 
 
 # Look at the top move from the set of moves which was done during random walk

@@ -213,7 +213,7 @@ def test(args, data=None, models=None):
 
 	# print(f"SPR percentage in top 10: {spr_top_10*100:.2f}%")
 
-	print(test_value_network(spr_model, generated_spr))
+	print(test_value_network(spr_model, spr_testing_dataset, generated_spr))
 
 	gnn_preds, gnn_true = [], []
 	node_preds, node_true = [], []
