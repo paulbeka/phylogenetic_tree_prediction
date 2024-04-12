@@ -92,8 +92,6 @@ def complete(args): 	# NOTE: RANDOM WALK GNN GENERATION DOES NOT WORK AT ALL.
 	# testing_data["spr"] = get_dataloader(testing_data["spr"])
 	spr_testing_dataset = [testing_data["spr"][i * len(files):(i + 1) * len(files)] for i in range((len(testing_data["spr"]) + len(files) - 1) // len(files) )]
 
-	# NEXT: SWITCH TO THE 1 SHOT GNN AND ALSO MAKE IT LOOP ON THE SAME TREE INSTEAD OF SMALL DATASET
-	# THEN, RUN ON LINUX TO FINALLY GET A WORKING SPR NETWORK
 	if args.optimize:
 		spr_model = optimize_spr_network(training_data["spr"], spr_testing_dataset)
 		gnn_model = optimize_gnn_network(training_data["gnn"], testing_data["gnn"])
@@ -284,12 +282,17 @@ def generate(data_files, generate_true_ratio=False, n_items_random_walk=40, gene
 		"node":[],
 		"base_ll": []
 	}
+	base_ll_graph_data = [0]*len(data_files)
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
 		dataset, gnn_dataset, node_dataset, base_ll = create_dataset(tree, 
 			generate_true_ratio=generate_true_ratio, 
 			n_items=n_items_random_walk,
 		 	generate_node=generate_node)
+
+
+		for i, item in enumerate(base_ll):
+			base_ll_graph_data[i] += item
 
 		training_data["spr"] += dataset
 		training_data["node"] += node_dataset
@@ -298,6 +301,17 @@ def generate(data_files, generate_true_ratio=False, n_items_random_walk=40, gene
 		else:
 			training_data["gnn"] += gnn_dataset		# Random walk does not work with GNN
 		training_data["base_ll"].append(base_ll)
+
+
+	final_base_ll = []
+	for item in base_ll_graph_data:
+		final_base_ll.append(item/len(data_files))
+
+	plt.plot(final_base_ll)
+	plt.xlabel("Iteration")
+	plt.ylabel("Log likelihood")
+	plt.title("Log likelihood at every iteration of random walk")
+	plt.savefig("log_likelihood_iterations")
 
 	return training_data
 
