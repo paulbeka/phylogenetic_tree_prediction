@@ -282,7 +282,7 @@ def generate(data_files, generate_true_ratio=False, n_items_random_walk=40, gene
 		"node":[],
 		"base_ll": []
 	}
-	base_ll_graph_data = [0]*len(data_files)
+	base_ll_graph_data = [0]*40
 	for i in tqdm(range(len(data_files))):
 		tree = Tree(data_files[i]) 
 		dataset, gnn_dataset, node_dataset, base_ll = create_dataset(tree, 
@@ -292,7 +292,7 @@ def generate(data_files, generate_true_ratio=False, n_items_random_walk=40, gene
 
 
 		for i, item in enumerate(base_ll):
-			base_ll_graph_data[i] += item
+			base_ll_graph_data[i] += item[1]
 
 		training_data["spr"] += dataset
 		training_data["node"] += node_dataset
